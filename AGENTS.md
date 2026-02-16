@@ -13,6 +13,7 @@ Each issue is a `*.md` file with YAML frontmatter (at minimum):
 - `type` (usually `task`)
 - `status` (e.g. `open`, `in_progress`, `done`)
 - `priority` (e.g. `P0`-`P4`)
+- `parent` (epic/sprint linkage; `null` if none)
 - `labels` (YAML list)
 
 **Quick reference:**
