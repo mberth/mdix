@@ -1,26 +1,10 @@
 # Development
 
-- We use uv for dependency management
-- Use click for command line tools
+- Developer-facing guidelines live in [`plan/Development.md`](plan/Development.md) (tech stack, product principles, testing, and how we write issues).
 
 ## Issue Tracking
 
-This project tracks work in-repo using markdown files under `plan/issues/`.
-
-Each issue is a `*.md` file with YAML frontmatter (at minimum):
-- `id`
-- `title`
-- `type` (usually `task`)
-- `status` (e.g. `open`, `in_progress`, `done`)
-- `priority` (e.g. `P0`-`P4`)
-- `parent` (epic/sprint linkage; `null` if none)
-- `labels` (YAML list)
-
-**Quick reference:**
-- Create a new issue: add a new file in `plan/issues/` (copy an existing issue as a template)
-- Update status: edit the issue frontmatter (`status: ...`)
-- Close work: set `status: done` and ensure the implementation is merged and pushed
-- Seed initial issues: run `./create_initial_beads_issues.sh` (it writes to `plan/issues/`)
+Project issue format and conventions are documented in [`plan/Development.md`](plan/Development.md) (see “Writing issues (in-repo)”).
 
 # Writing
 

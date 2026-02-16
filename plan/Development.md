@@ -1,5 +1,74 @@
 ## Development guidelines
 
+## Tech stack
+- **CLI**: `click`
+- **Frontmatter**: `python-frontmatter`
+- **Obsidian compatibility helpers**: `obsidian-tools`
+- **Dependency management**: `uv`
+
+## Product principles
+
+### Unix philosophy
+- Prefer **small, composable** commands.
+- Prefer **structured output** (JSON/JSONL) that users can **pipe into other tools** (`jq`, `rg`, `xargs`, shell).
+- If a use case can be solved cleanly by piping, prefer that over adding another feature/flag.
+
+### Principle of least surprise (agent-first)
+- Favor defaults and option names a **competent AI agent** (and Unix user) would predict.
+- Keep **naming consistent** across commands (`--root`, `--json`, `--human`, etc.).
+- Be deterministic by default (stable ordering; stable schemas).
+
+### Obsidian-first compatibility
+- We aim to be compatible with **any Obsidian vault** out there.
+- If in doubt, do what **Obsidian** does and **document the behavior**.
+- Example: Obsidian allows **spaces in filenames**. `mdix` must handle them correctly (CLI usage, quoting, output).
+
+## Writing issues (in-repo)
+
+This repo tracks work using markdown issues under `plan/issues/`. Prefer issues that are small, testable, and written so both humans and agents can execute them with minimal back-and-forth.
+
+### Where issues live
+- **Directory**: `plan/issues/`
+- **File type**: `*.md`
+- **Naming**: follow the existing pattern (e.g. `01-cli-scaffold.md`, `06-issue-parent-field.md`)
+
+### Required frontmatter (minimum schema)
+Each issue starts with YAML frontmatter with at least:
+- `id` (e.g. `mdix-01`)
+- `title` (short, descriptive)
+- `type` (usually `task` or `epic`)
+- `status` (`open`, `in_progress`, `done`)
+- `priority` (`P0`-`P4`)
+- `parent` (epic/sprint linkage; use `null` when none)
+- `labels` (YAML list)
+
+Example (copy/paste and edit):
+
+```yaml
+---
+id: mdix-XX
+title: "Short, specific title"
+type: task
+status: open
+priority: P2
+parent: mdix-00
+labels:
+  - sprint-1
+  - mvp
+---
+```
+
+### Body structure (use existing issues as the template)
+Use headings like the current issues do:
+- **Goal**: what success means in 1-3 sentences
+- **Scope**: what is in/out (bullets)
+- **Acceptance criteria**: objective checks (bullets); prefer concrete CLI examples when applicable
+- **Notes / Examples** (optional): extra context, demo commands, links
+
+### Status updates
+- Move work forward by updating `status:` in frontmatter.
+- When finishing an issue, set `status: done` and ensure the implementation is merged and pushed (per `AGENTS.md` session workflow).
+
 ## Testing
 
 ### Tooling
