@@ -1,22 +1,20 @@
-# mdix - Agent-friendly Markdown toolkit
+# mdix - Agent-friendly Markdown Toolkit
 
 **mdix** is a command-line interface for Markdown vaults: directory hierarchies of `*.md` files with optional YAML frontmatter.
 
-It is built for automation and agent workflows:
+It is built for agent workflows:
 
 - predictable, scriptable commands
-- machine-friendly output is the default, but you can suse `--human`
+- machine-friendly output is the default, but you can use `--human`
 - deterministic ordering for reproducibility
-- editor-agnostic behavior (works well with Obsidian-style vaults, but is not tied to Obsidian)
+- editor-agnostic behavior, it works well with Obsidian-style vaults, but is not tied to Obsidian
 
-## What works today
+## What's next
 
 - search notes by text, path, and frontmatter filters
-- combine structured metadata filters with content search
 - inspect and manage frontmatter fields
 - use stable output and exit codes in shell pipelines and CI
 
-Most query power lives in `mdix q`, while `find` and `ls` cover common fast paths.
 
 ## Installation
 
@@ -46,59 +44,68 @@ pip install --user mdix
 
 ## Quick start
 
-Point `mdix` at a vault directory:
+By default, mdix will search the current working directory and its subdirectories.
+
+Later: Point `mdix` at a vault directory:
 
 ```bash
 mdix --root ~/notes --help
 ```
 
+Or set `MDIX_ROOT`
+
+
+```bash
+MDIX_ROOT=~/notes mdix --help
+```
+
+
 Search content:
 
 ```bash
-mdix --root ~/notes find "attention is all you need"
+mdix find "attention is all you need"
 ```
 
 List notes that contain a frontmatter field:
 
 ```bash
-mdix --root ~/notes ls --has fm.tags
+mdix ls --has fm.tags
 ```
 
 Query by metadata:
 
 ```bash
-mdix --root ~/notes q --where 'tags contains "ml"'
+mdix q 'tags.contains("ml")'
 ```
 
-Combine metadata and text, then emit JSON:
+Combine metadata and text, will emit JSON by default:
 
 ```bash
-mdix --root ~/notes q --where 'status == "active" and tags contains "ml"' --text "TODO" --json
+mdix q --where 'status == "active" and tags.contains("ml")' --text "TODO"
 ```
 
 Show frontmatter for a specific note:
 
 ```bash
-mdix --root ~/notes fm show path/to/note.md
+mdix fm path/to/note.md
 ```
 
 ## Agent-friendly output
 
 - text output by default for interactive use
-- `--json` for machine consumption
+- json is the default for machine consumption
 - stable ordering to support reproducible automation
 
 Example:
 
 ```bash
-mdix --root ~/notes q --where 'tags contains "ml"' --json | jq '.results | length'
+mdix q 'tags.contains("ml")' | jq '.results | length'
 ```
 
 ## Commands
 
 - `mdix q` - query notes (frontmatter + content + path)
 - `mdix find` - quick text search
-- `mdix ls` - list with filters
 - `mdix fm show|set|unset|lint` - frontmatter operations
 - `mdix new` - create from template
 
@@ -123,11 +130,11 @@ uv run pytest
 - richer batch-edit workflows with preview
 - document-outline and structural reading helpers for long notes
 
-## Design principles
+## Design goals
 
-- files first: plain Markdown + YAML frontmatter
-- query-first: vault-wide answers before edits
-- safe writes: dry-run, diffs, explicit apply
+- be a good unix utility
+- agents first: machine readable output is the default, i.e. lines, json or jsonl
+- easy to discover functionality
 - composable: works well with `rg`, `jq`, `xargs`, and CI
 
 ## Status
