@@ -5,16 +5,21 @@
 
 ## Issue Tracking
 
-This project uses **bd (beads)** for issue tracking.
-Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.
+This project tracks work in-repo using markdown files under `plan/issues/`.
+
+Each issue is a `*.md` file with YAML frontmatter (at minimum):
+- `id`
+- `title`
+- `type` (usually `task`)
+- `status` (e.g. `open`, `in_progress`, `done`)
+- `priority` (e.g. `P0`-`P4`)
+- `labels` (YAML list)
 
 **Quick reference:**
-- `bd ready` - Find unblocked work
-- `bd create "Title" --type task --priority 2` - Create issue
-- `bd close <id>` - Complete work
-- `bd sync` - Sync with git (run at session end)
-
-For full workflow details: `bd prime`
+- Create a new issue: add a new file in `plan/issues/` (copy an existing issue as a template)
+- Update status: edit the issue frontmatter (`status: ...`)
+- Close work: set `status: done` and ensure the implementation is merged and pushed
+- Seed initial issues: run `./create_initial_beads_issues.sh` (it writes to `plan/issues/`)
 
 # Writing
 
@@ -36,11 +41,10 @@ General writing guidelines:
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
+3. **Update issue status** - Update `status:` in `plan/issues/*.md` for finished and in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```
