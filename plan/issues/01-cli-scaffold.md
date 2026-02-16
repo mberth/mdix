@@ -2,9 +2,10 @@
 id: mdix-01
 title: "Scaffold click CLI"
 type: task
-status: open
+status: done
 priority: P2
 parent: mdix-00
+depends_on: []
 labels:
   - sprint-1
   - mvp

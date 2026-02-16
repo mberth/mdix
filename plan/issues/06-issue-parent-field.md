@@ -5,6 +5,7 @@ type: task
 status: done
 priority: P1
 parent: mdix-00
+depends_on: []
 labels:
   - sprint-1
   - meta

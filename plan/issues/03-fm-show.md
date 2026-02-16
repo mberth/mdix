@@ -2,9 +2,11 @@
 id: mdix-03
 title: "Implement frontmatter handling"
 type: task
-status: open
+status: done
 priority: P2
 parent: mdix-00
+depends_on:
+  - mdix-01
 labels:
   - sprint-1
   - mvp

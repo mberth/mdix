@@ -5,6 +5,7 @@ type: epic
 status: open
 priority: P0
 parent: null
+depends_on: []
 labels:
   - sprint-1
   - epic

@@ -2,9 +2,12 @@
 id: mdix-05
 title: "Implement mdix ls --has fm.FIELD frontmatter presence filter"
 type: task
-status: open
+status: done
 priority: P2
 parent: mdix-00
+depends_on:
+  - mdix-01
+  - mdix-03
 labels:
   - sprint-1
   - mvp

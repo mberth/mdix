@@ -5,6 +5,7 @@ type: task
 status: open
 priority: P3
 parent: null
+depends_on: []
 labels:
   - backlog
   - query

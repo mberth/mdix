@@ -40,6 +40,7 @@ Each issue starts with YAML frontmatter with at least:
 - `status` (`open`, `in_progress`, `done`)
 - `priority` (`P0`-`P4`)
 - `parent` (epic/sprint linkage; use `null` when none)
+- `depends_on` (YAML list of issue ids this issue depends on; use `[]` when none)
 - `labels` (YAML list)
 
 Example (copy/paste and edit):
@@ -52,6 +53,7 @@ type: task
 status: open
 priority: P2
 parent: mdix-00
+depends_on: []
 labels:
   - sprint-1
   - mvp

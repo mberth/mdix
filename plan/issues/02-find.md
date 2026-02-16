@@ -2,9 +2,11 @@
 id: mdix-02
 title: "Implement find text search"
 type: task
-status: open
+status: done
 priority: P2
 parent: mdix-00
+depends_on:
+  - mdix-01
 labels:
   - sprint-1
   - mvp
