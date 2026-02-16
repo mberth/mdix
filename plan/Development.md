@@ -71,6 +71,30 @@ Use headings like the current issues do:
 - Move work forward by updating `status:` in frontmatter.
 - When finishing an issue, set `status: done` and ensure the implementation is merged and pushed (per `AGENTS.md` session workflow).
 
+### Frequently used `mdix` commands for issues
+In this repo, issue files live under `plan/issues/`. These commands assume you are running from the repo root.
+
+- **Index all issues (JSON list)**
+  - `uv run mdix --root plan/issues q`
+- **List all issue files**
+  - `uv run mdix --root plan/issues --human ls`
+- **List issues that have a frontmatter key**
+  - `uv run mdix --root plan/issues --human ls --has fm.parent`
+  - Note: `--has fm.parent` checks key presence; `parent: null` still counts as “present”.
+- **Show frontmatter for one issue**
+  - `uv run mdix --root plan/issues fm show 00-sprint-1-self-manage-issues.md`
+  - Get a single field: `uv run mdix --root plan/issues fm show 00-sprint-1-self-manage-issues.md | jq -r '.frontmatter.id'`
+- **List open issues**
+  - `uv run mdix --root plan/issues q | jq -r '.[] | select(.frontmatter.status == "open") | .path'`
+- **List all children of an epic (by parent id)**
+  - `uv run mdix --root plan/issues q | jq -r '.[] | select(.frontmatter.parent == "mdix-00") | .path'`
+- **List open issues with a non-null parent**
+  - `uv run mdix --root plan/issues q | jq -r '.[] | select(.frontmatter.parent != null) | select(.frontmatter.status == "open") | .path'`
+- **Search for "ready work" (open issues with no dependencies)**
+  - `uv run mdix --root plan/issues q | jq -r '.[] | select(.frontmatter.status == "open") | select((.frontmatter.depends_on // []) | length == 0) | .path'`
+- **Search issues by text**
+  - `uv run mdix --root plan/issues find "acceptance criteria"`
+
 ## Testing
 
 ### Tooling
