@@ -27,6 +27,26 @@ def _emit(value: Any, *, human: bool) -> None:
     click.echo(json.dumps(value, sort_keys=True, ensure_ascii=False))
 
 
+def _summarize_q_errors(items: list[dict[str, Any]]) -> list[str]:
+    errored = [item for item in items if item.get("errors")]
+    if not errored:
+        return []
+
+    lines = [f"q strict mode: found parse errors in {len(errored)} note(s)"]
+    for item in errored:
+        path = str(item.get("path", "<unknown>"))
+        types = sorted(
+            {
+                str(err.get("type", "unknown_error"))
+                for err in item.get("errors", [])
+                if isinstance(err, dict)
+            }
+        )
+        type_summary = ", ".join(types) if types else "unknown_error"
+        lines.append(f"- {path}: {type_summary}")
+    return lines
+
+
 def _not_implemented(_: click.Context, __: click.Parameter, value: bool) -> bool:
     # Placeholder for future global flags; keeps API stable.
     return value
@@ -92,8 +112,16 @@ def ls(ctx: click.Context, has_filter: str | None) -> None:
 
 
 @cli.command(help="Query/index notes (JSON dump for downstream jq).")
+@click.option(
+    "--fail-on-errors",
+    "--strict",
+    "fail_on_errors",
+    is_flag=True,
+    default=False,
+    help="Exit non-zero when any note has parse errors; still prints full JSON to stdout.",
+)
 @click.pass_context
-def q(ctx: click.Context) -> None:
+def q(ctx: click.Context, fail_on_errors: bool) -> None:
     root: Path = ctx.obj["root"]
     human: bool = ctx.obj["human"]
 
@@ -113,6 +141,11 @@ def q(ctx: click.Context) -> None:
         )
 
     _emit(items, human=False)
+    if fail_on_errors:
+        summary_lines = _summarize_q_errors(items)
+        if summary_lines:
+            click.echo("\n".join(summary_lines), err=True)
+            ctx.exit(2)
 
 
 @cli.command(help="Quick text search across markdown files.")

@@ -78,6 +78,12 @@ Query by metadata:
 mdix q
 ```
 
+Fail CI/jobs when parse errors are present, while still keeping JSON on stdout:
+
+```bash
+mdix q --fail-on-errors
+```
+
 Show frontmatter for a specific note:
 
 ```bash
@@ -99,6 +105,7 @@ mdix q | jq 'length'
 ## Commands
 
 - `mdix q` - index/query notes as a JSON list (`path`, `frontmatter`, `errors`)
+  - add `--fail-on-errors` (alias: `--strict`) to emit an error summary to stderr and exit non-zero when any item has `errors`
 - `mdix find` - quick text search
 - `mdix fm show` - frontmatter inspection
 
