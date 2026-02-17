@@ -2,35 +2,52 @@
 id: mdix-13
 title: "Evaluate doctest-style CLI regression tests for Sprint 1 workflows"
 type: task
-status: open
+status: done
 priority: P1
-parent: mdix-00
-depends_on:
-  - mdix-12
+parent: mdix-14
+depends_on: []
 labels:
-  - sprint-1
+  - process
   - testing
   - cli
 ---
 
 ## Goal
-Design and implement a doctest-like test approach for key Sprint 1 CLI workflows, with deterministic output checks and explicit handling of frontmatter/error edge cases.
+Evaluate and choose a doctest-like approach for key CLI workflows that preserves narrative readability while enabling deterministic automated output checks.
 
 ## Scope
-- Propose and validate a doctest-like harness for CLI commands and output snapshots (or equivalent golden-style assertions).
-- Add/expand regression coverage for:
-  - `ls` determinism and `--has fm.<field>`
-  - `fm show` output schema stability, including missing and empty frontmatter
-  - `find` behavior and deterministic output ordering
-  - `q` output shape (`frontmatter`, `errors` presence) and stable ordering
-- Keep command examples and assertions compatible with the fixture vault in `tests/fixtures/vault_great_discoveries/`.
-- Document trade-offs and recommended long-term test style in a short note (test module docstring or `plan/` note).
+- Compare candidate approaches for narrative CLI regression specs:
+  - BDD tools (`behave`)
+  - framework-native options (`click` test helpers)
+  - notebook/doc formats (Jupyter/Quarto)
+  - custom Markdown-driven runner
+- Capture the selected approach and rationale.
+- Define canonical Markdown block conventions for command input and expected outputs.
+- Spin implementation work into a dedicated follow-up task.
 
 ## Acceptance criteria
-- A concrete doctest-like testing pattern is documented and used by at least one test per command area (`ls`, `fm show`, `find`, `q`).
-- New tests assert deterministic ordering and stable output schemas, not just presence of substrings.
-- Edge cases for missing/empty frontmatter are covered in `fm show` and reflected in expected output shape.
-- `uv run pytest` passes with the new regression coverage.
+- Decision record exists in this issue with clear recommendation and trade-offs.
+- The selected Markdown conventions are documented exactly as:
+  - command input blocks use fenced code with language `bash`
+  - expected stdout blocks use fenced code with language `expected`
+  - expected stderr blocks use fenced code with language `expected-err` and default to empty if omitted
+- A dedicated implementation issue exists with concrete scope and acceptance criteria.
 
 ## Notes
-- This issue is intentionally scoped to establish the pattern and baseline coverage; broader query-language tests can follow separately.
+- Decision: use Markdown specifications plus a small custom pytest runner.
+- Rationale: this keeps tests readable (narrative text, headings, examples) while preserving deterministic machine-checked assertions in CI.
+- Chosen block format:
+  - Input command:
+    ```bash
+    mdix --root tests/fixtures/vault_great_discoveries ls
+    ```
+  - Expected stdout:
+    ```expected
+    discoveries/general-relativity.md
+    people/marie-curie.md
+    ```
+  - Expected stderr (optional, defaults to empty when not present):
+    ```expected-err
+    warning: example stderr line
+    ```
+- Follow-up implementation ticket: `mdix-15`.

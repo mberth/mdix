@@ -4,7 +4,7 @@ title: "Add committed great-discoveries fixture vault and migrate tests to it"
 type: task
 status: open
 priority: P1
-parent: mdix-00
+parent: mdix-14
 depends_on: []
 labels:
   - sprint-1
