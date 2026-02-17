@@ -97,10 +97,12 @@ Validate and migrate a vault schema contract:
 
 ```bash
 mdix --root ~/notes schema inventory
-mdix --root ~/notes schema validate
+mdix --root ~/notes schema validate --include "people/**" --exclude "people/archive/**"
 mdix --root ~/notes schema migrate --dry-run
 mdix --root ~/notes schema migrate
 ```
+
+Both `schema validate` and `schema migrate` report the effective schema source path in output under `schema`.
 
 ## Agent-friendly output
 
@@ -121,8 +123,27 @@ mdix q | jq 'length'
 - `mdix find` - quick text search
 - `mdix fm show` - frontmatter inspection
 - `mdix schema inventory` - frontmatter key inventory and drift visibility
-- `mdix schema validate` - deterministic schema violations for CI/local gates (exit code `2` on violations in strict mode)
+- `mdix schema validate` - deterministic schema violations for CI/local gates (exit code `2` on violations in strict mode), scoped to files with parseable frontmatter
+  - supports repeatable `--include` and `--exclude` glob filters for path scoping
 - `mdix schema migrate` - safe key migration transforms with dry-run preview
+
+## Epic 17 motivating vault pointer
+
+Epic 17 examples target a repository-local pointer at `tmp/ai-barcamp-greifswald`.
+
+- The pointer is optional and read-only for validation/migration dry-runs.
+- Local setup assumes the motivating vault is available at `../ai-barcamp-greifswald` relative to this repo (for example `/Users/<you>/work/ai-barcamp-greifswald`).
+- Recreate the pointer with:
+
+```bash
+ln -sfn ../../ai-barcamp-greifswald tmp/ai-barcamp-greifswald
+```
+
+- Verify setup (fails fast with a clear message when broken):
+
+```bash
+scripts/check-epic17-vault.sh
+```
 
 ## Schema contract (`mdix.schema.yml`)
 

@@ -66,3 +66,6 @@ Motivating examples from sampled vault (`tmp/ai-barcamp-greifswald/`):
   - `mdix-22` validator and quality gate behavior
   - `mdix-23` migrator with dry-run/apply
   - `mdix-24` fixtures, docs, and regression coverage
+  - `mdix-25` validation scope and path filtering for mixed-content vaults
+  - `mdix-26` schema source path provenance in command outputs
+  - `mdix-27` motivating vault pointer reproducibility under `tmp/`

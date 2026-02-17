@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 import yaml
@@ -32,6 +33,7 @@ class SchemaContract:
 
 @dataclass(frozen=True)
 class ParsedNote:
+    has_frontmatter: bool
     frontmatter: dict[str, Any] | None
     body: str
     errors: list[dict[str, str]]
@@ -54,7 +56,7 @@ def _has_frontmatter_block(text: str) -> bool:
 def _read_note(path: Path) -> ParsedNote:
     text = path.read_text(encoding="utf-8")
     if not _has_frontmatter_block(text):
-        return ParsedNote(frontmatter=None, body=text, errors=[])
+        return ParsedNote(has_frontmatter=False, frontmatter=None, body=text, errors=[])
 
     lines = text.splitlines(keepends=True)
     closing_index: int | None = None
@@ -65,6 +67,7 @@ def _read_note(path: Path) -> ParsedNote:
 
     if closing_index is None:
         return ParsedNote(
+            has_frontmatter=True,
             frontmatter=None,
             body=text,
             errors=[{"type": "yaml_error", "message": "Frontmatter block is missing closing '---' delimiter."}],
@@ -75,19 +78,25 @@ def _read_note(path: Path) -> ParsedNote:
     try:
         loaded = yaml.safe_load(yaml_text) if yaml_text.strip() else {}
     except yaml.YAMLError as e:
-        return ParsedNote(frontmatter=None, body=body, errors=[{"type": "yaml_error", "message": str(e)}])
+        return ParsedNote(
+            has_frontmatter=True,
+            frontmatter=None,
+            body=body,
+            errors=[{"type": "yaml_error", "message": str(e)}],
+        )
 
     if loaded is None:
         loaded = {}
 
     if not isinstance(loaded, dict):
         return ParsedNote(
+            has_frontmatter=True,
             frontmatter=None,
             body=body,
             errors=[{"type": "frontmatter_error", "message": "Frontmatter must parse to a mapping/object."}],
         )
 
-    return ParsedNote(frontmatter=loaded, body=body, errors=[])
+    return ParsedNote(has_frontmatter=True, frontmatter=loaded, body=body, errors=[])
 
 
 def _format_frontmatter(frontmatter_obj: dict[str, Any]) -> str:
@@ -205,16 +214,45 @@ def _type_name(value: Any) -> str:
     return type(value).__name__
 
 
-def validate_vault(root: Path, contract: SchemaContract) -> dict[str, Any]:
+def _schema_source_path(root: Path, schema_path: Path) -> str:
+    resolved_schema = schema_path.resolve()
+    try:
+        return resolved_schema.relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return resolved_schema.as_posix()
+
+
+def _path_in_scope(rel_path: str, include: tuple[str, ...], exclude: tuple[str, ...]) -> bool:
+    path = PurePosixPath(rel_path)
+    if include and not any(path.match(pattern) for pattern in include):
+        return False
+    if exclude and any(path.match(pattern) for pattern in exclude):
+        return False
+    return True
+
+
+def validate_vault(
+    root: Path,
+    contract: SchemaContract,
+    *,
+    include: tuple[str, ...] = (),
+    exclude: tuple[str, ...] = (),
+) -> dict[str, Any]:
     violations: list[dict[str, Any]] = []
     files_scanned = 0
+    files_with_frontmatter = 0
+    files_validated = 0
     files_with_violations: set[str] = set()
     parse_errors = 0
 
     for note_path in iter_markdown_files(root):
-        files_scanned += 1
         rel = note_path.resolve().relative_to(root.resolve()).as_posix()
+        if not _path_in_scope(rel, include, exclude):
+            continue
+        files_scanned += 1
         note = _read_note(note_path)
+        if note.has_frontmatter:
+            files_with_frontmatter += 1
         if note.errors:
             parse_errors += 1
             files_with_violations.add(rel)
@@ -230,7 +268,12 @@ def validate_vault(root: Path, contract: SchemaContract) -> dict[str, Any]:
             )
             continue
 
-        frontmatter_obj = note.frontmatter or {}
+        if note.frontmatter is None:
+            # Files without a frontmatter block are outside schema validation scope.
+            continue
+
+        files_validated += 1
+        frontmatter_obj = note.frontmatter
         for field in contract.fields:
             exists, value = _get_at_path(frontmatter_obj, field.name)
             if field.required and not exists:
@@ -280,13 +323,15 @@ def validate_vault(root: Path, contract: SchemaContract) -> dict[str, Any]:
     violations.sort(key=lambda item: (item["path"], item["code"], str(item["field"])))
     summary = {
         "files_scanned": files_scanned,
+        "files_with_frontmatter": files_with_frontmatter,
+        "files_validated": files_validated,
         "files_with_violations": len(files_with_violations),
-        "files_valid": files_scanned - len(files_with_violations),
+        "files_valid": files_validated - len(files_with_violations),
         "parse_errors": parse_errors,
         "violations": len(violations),
     }
     return {
-        "schema": contract.path.name,
+        "schema": _schema_source_path(root, contract.path),
         "summary": summary,
         "violations": violations,
     }
@@ -351,7 +396,7 @@ def migrate_vault(root: Path, contract: SchemaContract, *, dry_run: bool) -> dic
 
     changes.sort(key=lambda item: item["path"])
     return {
-        "schema": contract.path.name,
+        "schema": _schema_source_path(root, contract.path),
         "summary": {
             "files_scanned": files_scanned,
             "files_changed": files_changed,

@@ -293,6 +293,20 @@ def inventory(ctx: click.Context, human_mode: bool, json_mode: bool) -> None:
     default=None,
     help="Path to schema contract file (default: <root>/mdix.schema.yml).",
 )
+@click.option(
+    "--include",
+    "include_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for paths to include (repeatable, matched relative to --root).",
+)
+@click.option(
+    "--exclude",
+    "exclude_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for paths to exclude (repeatable, matched relative to --root).",
+)
 @click.option("--strict/--no-strict", default=True, help="Exit non-zero when violations are found.")
 @click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
@@ -300,6 +314,8 @@ def inventory(ctx: click.Context, human_mode: bool, json_mode: bool) -> None:
 def validate(
     ctx: click.Context,
     schema_path: Path | None,
+    include_patterns: tuple[str, ...],
+    exclude_patterns: tuple[str, ...],
     strict: bool,
     human_mode: bool,
     json_mode: bool,
@@ -317,15 +333,18 @@ def validate(
     except ValueError as e:
         raise click.ClickException(str(e)) from e
 
-    result = validate_vault(root, contract)
+    result = validate_vault(root, contract, include=include_patterns, exclude=exclude_patterns)
 
     if not human:
         _emit(result, human=False)
     else:
+        click.echo(f"schema={result['schema']}")
         summary = result["summary"]
         click.echo(
             (
                 f"files_scanned={summary['files_scanned']} "
+                f"files_with_frontmatter={summary['files_with_frontmatter']} "
+                f"files_validated={summary['files_validated']} "
                 f"files_valid={summary['files_valid']} "
                 f"files_with_violations={summary['files_with_violations']} "
                 f"parse_errors={summary['parse_errors']} "
@@ -376,6 +395,7 @@ def migrate(
         _emit(result, human=False)
         return
 
+    click.echo(f"schema={result['schema']}")
     summary = result["summary"]
     click.echo(
         (
