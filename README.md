@@ -81,6 +81,8 @@ Query by metadata:
 mdix q
 ```
 
+`mdix q` JSON output normalizes YAML `date`/`datetime` scalar values to ISO-8601 strings so output stays valid for `jq` and CI pipelines.
+
 Fail CI/jobs when parse errors are present, while still keeping JSON on stdout:
 
 ```bash
@@ -98,11 +100,52 @@ Validate and migrate a vault schema contract:
 ```bash
 mdix --root ~/notes schema inventory
 mdix --root ~/notes schema validate --include "people/**" --exclude "people/archive/**"
-mdix --root ~/notes schema migrate --dry-run
+mdix --root ~/notes schema migrate --dry-run --include "people/**"
 mdix --root ~/notes schema migrate
 ```
 
+Batch normalize recurring frontmatter cleanup operations:
+
+```bash
+mdix --root ~/notes fm normalize --dry-run \
+  --include "people/**" \
+  --map-value status active identified \
+  --set-default type person \
+  --derive title nickname \
+  --derive-from-filename title \
+  --remove-null-keys
+```
+
 Both `schema validate` and `schema migrate` report the effective schema source path in output under `schema`.
+
+## Vault cleanup tips (incremental workflow)
+
+For mixed-content vaults, use small scoped cleanup steps and commit after each step:
+
+```bash
+# 1) Inventory drift first
+mdix --root ~/notes schema inventory | jq '.summary'
+
+# 2) Validate only the target collection
+mdix --root ~/notes schema validate \
+  --include "Personen/**" \
+  --exclude "Personen/_TEMPLATE.md"
+
+# 3) Preview and apply scoped migrations
+mdix --root ~/notes schema migrate --dry-run --include "Personen/**"
+mdix --root ~/notes schema migrate
+
+# 4) Re-validate, then commit that single cleanup step
+mdix --root ~/notes schema validate --include "Personen/**"
+```
+
+Practical notes:
+
+- Prefer scoping with `--include`/`--exclude` to avoid noisy violations outside the current cleanup target.
+- Use `schema migrate --dry-run` before writes and keep each migration pass as a separate commit.
+- Use `fm normalize --dry-run` for repeatable status/title/type/null cleanup flows instead of ad-hoc scripts.
+- Keep schema enums strict, then normalize legacy values in dedicated follow-up commits.
+- Use a frontmatter library (for example `python-frontmatter`) or `mdix` helpers for scripted edits; avoid ad-hoc delimiter parsing.
 
 ## Agent-friendly output
 
@@ -120,12 +163,15 @@ mdix q | jq 'length'
 
 - `mdix q` - index/query notes as a JSON list (`path`, `frontmatter`, `errors`)
   - add `--fail-on-errors` (alias: `--strict`) to emit an error summary to stderr and exit non-zero when any item has `errors`
+  - YAML `date`/`datetime` scalars are serialized as ISO-8601 strings in JSON output
 - `mdix find` - quick text search
 - `mdix fm show` - frontmatter inspection
+- `mdix fm normalize` - deterministic batch frontmatter normalization with dry-run preview
 - `mdix schema inventory` - frontmatter key inventory and drift visibility
 - `mdix schema validate` - deterministic schema violations for CI/local gates (exit code `2` on violations in strict mode), scoped to files with parseable frontmatter
   - supports repeatable `--include` and `--exclude` glob filters for path scoping
-- `mdix schema migrate` - safe key migration transforms with dry-run preview
+- `mdix schema migrate` - safe key/value/default/null migration transforms with dry-run preview
+  - supports repeatable `--include` and `--exclude` glob filters for path scoping
 
 ## Epic 17 motivating vault pointer
 
@@ -170,6 +216,15 @@ migrations:
   - op: rename
     from: kontakt_email
     to: kontakt.email
+  - op: value_map
+    field: status
+    map:
+      active: identified
+  - op: set_default
+    field: type
+    value: person
+  - op: unset_if_null
+    field: legacy_note
 ```
 
 See command help:

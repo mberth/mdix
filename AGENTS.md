@@ -6,6 +6,11 @@
 
 Project issue format and conventions are documented in [`plan/Development.md`](plan/Development.md) (see “Writing issues (in-repo)”).
 
+## Frontmatter handling
+
+- Do not parse YAML frontmatter by manually splitting on `---` delimiters in ad-hoc scripts.
+- Use `python-frontmatter` (or existing `mdix` frontmatter helpers) for read/write operations so behavior stays consistent across tools.
+
 # Writing
 
 When generating markdown:

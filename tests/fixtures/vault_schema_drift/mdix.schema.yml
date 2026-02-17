@@ -28,3 +28,12 @@ migrations:
   - op: rename
     from: kontakt_email
     to: kontakt.email
+  - op: value_map
+    field: status
+    map:
+      active: identified
+  - op: set_default
+    field: type
+    value: person
+  - op: unset_if_null
+    field: legacy_note

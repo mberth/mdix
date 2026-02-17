@@ -83,3 +83,25 @@ def test_fm_show_returns_structured_error_when_frontmatter_has_content_key(copie
     assert obj["errors"]
     assert obj["errors"][0]["type"] == "frontmatter_error"
 
+
+def test_q_serializes_yaml_date_and_datetime_as_iso8601_strings(copied_fixture_vault: Path) -> None:
+    (copied_fixture_vault / "people" / "dated-note.md").write_text(
+        """---
+title: "Dated Note"
+type: person
+published_on: 2026-02-01
+reviewed_at: 2026-02-01T12:30:00
+---
+Fixture note with date-like YAML scalars.
+""",
+        encoding="utf-8",
+    )
+
+    proc = run_mdix(copied_fixture_vault, "q")
+    assert proc.returncode == 0, proc.stderr
+    items = json.loads(proc.stdout)
+    dated = next(i for i in items if i["path"] == "people/dated-note.md")
+    assert dated["errors"] == []
+    assert dated["frontmatter"]["published_on"] == "2026-02-01"
+    assert dated["frontmatter"]["reviewed_at"] == "2026-02-01T12:30:00"
+

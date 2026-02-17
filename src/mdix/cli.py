@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date, datetime
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 import click
+import yaml
 
 from .frontmatter_io import format_frontmatter_yaml, read_frontmatter
-from .schema import inventory_vault, load_contract, migrate_vault, validate_vault
+from .schema import MigrationOperation, inventory_vault, load_contract, migrate_vault, normalize_vault, validate_vault
 from .vault import iter_markdown_files
 
 
@@ -25,7 +28,13 @@ def _emit(value: Any, *, human: bool) -> None:
             click.echo(str(value))
         return
 
-    click.echo(json.dumps(value, sort_keys=True, ensure_ascii=False))
+    click.echo(json.dumps(value, sort_keys=True, ensure_ascii=False, default=_json_default))
+
+
+def _json_default(value: Any) -> str:
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
 def _resolve_human_mode(default_human: bool, human: bool, json_mode: bool) -> bool:
@@ -56,6 +65,22 @@ def _summarize_q_errors(items: list[dict[str, Any]]) -> list[str]:
         type_summary = ", ".join(types) if types else "unknown_error"
         lines.append(f"- {path}: {type_summary}")
     return lines
+
+
+def _path_in_scope(rel_path: str, include: tuple[str, ...], exclude: tuple[str, ...]) -> bool:
+    path = PurePosixPath(rel_path)
+    if include and not any(path.match(pattern) for pattern in include):
+        return False
+    if exclude and any(path.match(pattern) for pattern in exclude):
+        return False
+    return True
+
+
+def _parse_yaml_value(value: str, *, option_name: str) -> Any:
+    try:
+        return yaml.safe_load(value)
+    except yaml.YAMLError as e:
+        raise click.ClickException(f"Invalid YAML value for {option_name}: {e}") from e
 
 
 def _not_implemented(_: click.Context, __: click.Parameter, value: bool) -> bool:
@@ -248,6 +273,152 @@ def fm_lint(ctx: click.Context) -> None:  # noqa: ARG001 - ctx for consistent si
     raise click.ClickException("Not yet implemented")
 
 
+@fm.command(name="normalize", help="Batch-normalize frontmatter with deterministic preview/apply output.")
+@click.option(
+    "--include",
+    "include_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for paths to include (repeatable, matched relative to --root).",
+)
+@click.option(
+    "--exclude",
+    "exclude_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for paths to exclude (repeatable, matched relative to --root).",
+)
+@click.option(
+    "--map-value",
+    "map_values",
+    nargs=3,
+    multiple=True,
+    metavar="FIELD FROM TO",
+    help="Map a field value (repeatable). FROM/TO are parsed as YAML scalars.",
+)
+@click.option(
+    "--set-default",
+    "set_defaults",
+    nargs=2,
+    multiple=True,
+    metavar="FIELD VALUE",
+    help="Set default when field is missing/null (repeatable). VALUE is parsed as YAML.",
+)
+@click.option(
+    "--derive",
+    "derives",
+    nargs=2,
+    multiple=True,
+    metavar="TARGET SOURCE",
+    help="Set TARGET from SOURCE when TARGET is missing/null.",
+)
+@click.option(
+    "--derive-from-filename",
+    "derive_from_filename",
+    multiple=True,
+    metavar="FIELD",
+    help="Set FIELD from note filename when FIELD is missing/null.",
+)
+@click.option(
+    "--unset-if-null",
+    "unset_if_null",
+    multiple=True,
+    metavar="FIELD",
+    help="Remove FIELD when its value is null.",
+)
+@click.option(
+    "--remove-null-keys",
+    is_flag=True,
+    default=False,
+    help="Recursively remove all frontmatter keys with null values.",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Preview changes without writing files.")
+@click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
+@click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
+@click.pass_context
+def fm_normalize(
+    ctx: click.Context,
+    include_patterns: tuple[str, ...],
+    exclude_patterns: tuple[str, ...],
+    map_values: tuple[tuple[str, str, str], ...],
+    set_defaults: tuple[tuple[str, str], ...],
+    derives: tuple[tuple[str, str], ...],
+    derive_from_filename: tuple[str, ...],
+    unset_if_null: tuple[str, ...],
+    remove_null_keys: bool,
+    dry_run: bool,
+    human_mode: bool,
+    json_mode: bool,
+) -> None:
+    root: Path = ctx.obj["root"]
+    default_human: bool = ctx.obj["human"]
+    human = _resolve_human_mode(default_human, human_mode, json_mode)
+
+    operations: list[MigrationOperation] = []
+    for field, source_raw, target_raw in map_values:
+        source_value = _parse_yaml_value(source_raw, option_name="--map-value FROM")
+        target_value = _parse_yaml_value(target_raw, option_name="--map-value TO")
+        operations.append(MigrationOperation(op="value_map", field=field, mapping=((source_value, target_value),)))
+    for field, value_raw in set_defaults:
+        operations.append(
+            MigrationOperation(op="set_default", field=field, value=_parse_yaml_value(value_raw, option_name="--set-default"))
+        )
+    for target, source in derives:
+        operations.append(MigrationOperation(op="derive", field=target, source=source))
+    for field in derive_from_filename:
+        operations.append(MigrationOperation(op="derive_from_filename", field=field))
+    for field in unset_if_null:
+        operations.append(MigrationOperation(op="unset_if_null", field=field))
+    if remove_null_keys:
+        operations.append(MigrationOperation(op="remove_null_keys"))
+
+    if not operations:
+        raise click.ClickException(
+            "No operations configured. Use one of --map-value/--set-default/--derive/--derive-from-filename/"
+            "--unset-if-null/--remove-null-keys."
+        )
+
+    result = normalize_vault(
+        root,
+        operations=tuple(operations),
+        include=include_patterns,
+        exclude=exclude_patterns,
+        dry_run=dry_run,
+    )
+    if not human:
+        _emit(result, human=False)
+        return
+
+    summary = result["summary"]
+    click.echo(
+        (
+            f"files_scanned={summary['files_scanned']} "
+            f"files_changed={summary['files_changed']} "
+            f"operations={summary['operations']} "
+            f"parse_errors={summary['parse_errors']} "
+            f"dry_run={summary['dry_run']}"
+        )
+    )
+    for item in result["changes"]:
+        if item["status"] == "parse_error":
+            click.echo(f"- {item['path']} [parse_error]")
+            continue
+        for change in item["changes"]:
+            op = change["op"]
+            if op == "value_map":
+                click.echo(f"- {item['path']} value_map {change['field']}: {change['from']} -> {change['to']}")
+            elif op == "set_default":
+                click.echo(f"- {item['path']} set_default {change['field']} = {change['value']}")
+            elif op == "derive":
+                click.echo(f"- {item['path']} derive {change['field']} <- {change['from']}")
+            elif op == "derive_from_filename":
+                click.echo(f"- {item['path']} derive_from_filename {change['field']} = {change['value']}")
+            elif op == "unset_if_null":
+                click.echo(f"- {item['path']} unset_if_null {change['field']}")
+            elif op == "remove_null_keys":
+                click.echo(f"- {item['path']} remove_null_keys {', '.join(change['fields'])}")
+
+
 @cli.command(help="Not yet implemented (planned: create new note from template).")
 @click.pass_context
 def new(ctx: click.Context) -> None:  # noqa: ARG001 - ctx for consistent signature
@@ -367,6 +538,20 @@ def validate(
     help="Path to schema contract file (default: <root>/mdix.schema.yml).",
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Preview changes without writing files.")
+@click.option(
+    "--include",
+    "include_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for paths to include (repeatable, matched relative to --root).",
+)
+@click.option(
+    "--exclude",
+    "exclude_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for paths to exclude (repeatable, matched relative to --root).",
+)
 @click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
 @click.pass_context
@@ -374,6 +559,8 @@ def migrate(
     ctx: click.Context,
     schema_path: Path | None,
     dry_run: bool,
+    include_patterns: tuple[str, ...],
+    exclude_patterns: tuple[str, ...],
     human_mode: bool,
     json_mode: bool,
 ) -> None:
@@ -390,7 +577,13 @@ def migrate(
     except ValueError as e:
         raise click.ClickException(str(e)) from e
 
-    result = migrate_vault(root, contract, dry_run=dry_run)
+    result = migrate_vault(
+        root,
+        contract,
+        include=include_patterns,
+        exclude=exclude_patterns,
+        dry_run=dry_run,
+    )
     if not human:
         _emit(result, human=False)
         return
@@ -411,7 +604,15 @@ def migrate(
             click.echo(f"- {item['path']} [parse_error]")
             continue
         for change in item["changes"]:
-            click.echo(f"- {item['path']} rename {change['from']} -> {change['to']}")
+            op = change["op"]
+            if op == "rename":
+                click.echo(f"- {item['path']} rename {change['from']} -> {change['to']}")
+            elif op == "value_map":
+                click.echo(f"- {item['path']} value_map {change['field']}: {change['from']} -> {change['to']}")
+            elif op == "set_default":
+                click.echo(f"- {item['path']} set_default {change['field']} = {change['value']}")
+            elif op == "unset_if_null":
+                click.echo(f"- {item['path']} unset_if_null {change['field']}")
 
 
 def main() -> None:
