@@ -2,7 +2,7 @@
 id: mdix-14
 title: "Epic: Tighten development process"
 type: epic
-status: in_progress
+status: done
 priority: P1
 parent: null
 depends_on: []

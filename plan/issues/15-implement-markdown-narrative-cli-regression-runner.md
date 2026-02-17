@@ -2,7 +2,7 @@
 id: mdix-15
 title: "Implement Markdown narrative CLI regression runner"
 type: task
-status: open
+status: done
 priority: P1
 parent: mdix-14
 depends_on:

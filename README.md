@@ -24,7 +24,7 @@ If you already have `uv`, run `mdix` in an isolated environment:
 
 ```bash
 uvx mdix --help
-uvx mdix --root ~/notes find "backprop" --json
+uvx mdix --root ~/notes find "backprop"
 ```
 
 ### Install as a tool with `uv`
@@ -75,19 +75,13 @@ mdix ls --has fm.tags
 Query by metadata:
 
 ```bash
-mdix q 'tags.contains("ml")'
-```
-
-Combine metadata and text, will emit JSON by default:
-
-```bash
-mdix q --where 'status == "active" and tags.contains("ml")' --text "TODO"
+mdix q
 ```
 
 Show frontmatter for a specific note:
 
 ```bash
-mdix fm path/to/note.md
+mdix fm show path/to/note.md
 ```
 
 ## Agent-friendly output
@@ -99,15 +93,14 @@ mdix fm path/to/note.md
 Example:
 
 ```bash
-mdix q 'tags.contains("ml")' | jq '.results | length'
+mdix q | jq 'length'
 ```
 
 ## Commands
 
-- `mdix q` - query notes (frontmatter + content + path)
+- `mdix q` - index/query notes as a JSON list (`path`, `frontmatter`, `errors`)
 - `mdix find` - quick text search
-- `mdix fm show|set|unset|lint` - frontmatter operations
-- `mdix new` - create from template
+- `mdix fm show` - frontmatter inspection
 
 See command help:
 

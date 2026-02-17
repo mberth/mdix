@@ -2,7 +2,7 @@
 id: mdix-10
 title: "Bug: README CLI examples don’t match implemented Sprint 1 commands"
 type: task
-status: open
+status: done
 priority: P1
 parent: mdix-14
 depends_on: []

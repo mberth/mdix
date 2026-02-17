@@ -2,7 +2,7 @@
 id: mdix-12
 title: "Add committed great-discoveries fixture vault and migrate tests to it"
 type: task
-status: open
+status: done
 priority: P1
 parent: mdix-14
 depends_on: []
