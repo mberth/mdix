@@ -23,6 +23,13 @@
 - If in doubt, do what **Obsidian** does and **document the behavior**.
 - Example: Obsidian allows **spaces in filenames**. `mdix` must handle them correctly (CLI usage, quoting, output).
 
+### Lean thinking (flow over multitasking)
+- Prefer **finishing over starting**: close the current in-progress issue before pulling a new one.
+- Keep **WIP small**: default to one active child task at a time (epic tracking can stay `in_progress`).
+- Choose the **smallest valuable slice** that can be implemented, tested, and documented end-to-end in one pass.
+- Treat partial work as inventory: if something is blocked, either unblock quickly or pause it and move another issue to `open`.
+- Prioritize **cycle time and feedback**: ship small, verify with tests, then iterate.
+
 ## Writing issues (in-repo)
 
 This repo tracks work using markdown issues under `plan/issues/`. Prefer issues that are small, testable, and written so both humans and agents can execute them with minimal back-and-forth.
