@@ -2,7 +2,7 @@
 id: mdix-00
 title: "Epic: Sprint 1 — mdix can manage its own issues"
 type: epic
-status: in_progress
+status: done
 priority: P0
 parent: null
 depends_on: []

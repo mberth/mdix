@@ -2,7 +2,7 @@
 id: mdix-11
 title: "Bug: Docs/examples imply wrong path prefixes and unclear --has null semantics"
 type: task
-status: open
+status: done
 priority: P2
 parent: mdix-00
 depends_on: []

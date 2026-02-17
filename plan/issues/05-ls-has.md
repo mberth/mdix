@@ -27,4 +27,4 @@ Implement `mdix ls` with `--has fm.<field>` as shown in README.
 ## Acceptance criteria
 - `mdix ls --has fm.tags` returns only notes that contain `tags:` in frontmatter
 - Handles missing / malformed frontmatter gracefully (errors are surfaced consistently)
-- From this repo root, `mdix --root plan/issues ls --has fm.parent` returns JSON containing at least `plan/issues/00-sprint-1-self-manage-issues.md`
+- From this repo root, `mdix --root plan/issues ls --has fm.parent` returns JSON containing at least `00-sprint-1-self-manage-issues.md`

@@ -72,6 +72,9 @@ List notes that contain a frontmatter field:
 mdix ls --has fm.tags
 ```
 
+`--has fm.<field>` checks frontmatter key presence. Keys with `null` values still count as present.
+To filter for non-null values, pipe `mdix q` into `jq`.
+
 Query by metadata:
 
 ```bash
