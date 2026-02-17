@@ -101,6 +101,12 @@ In this repo, issue files live under `plan/issues/`. These commands assume you a
 - Use `pytest`.
 - Prefer tests that exercise behavior end-to-end via the CLI entrypoint (i.e. running `mdix`), with a small on-disk example vault fixture.
 
+### Linting
+- Use `ruff` for linting.
+- Line width is 120 characters.
+- Run lint before or with tests:
+  - `uv run ruff check .`
+
 ### Running tests
 - Sync the environment:
   - `uv sync`

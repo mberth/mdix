@@ -119,9 +119,11 @@ mdix <command> --help
 ## Development
 
 This project uses `uv` for dependency management.
+The project supports Python `>=3.11` and CI runs on Python 3.11.
 
 ```bash
 uv sync
+uv run ruff check .
 uv run pytest
 ```
 
