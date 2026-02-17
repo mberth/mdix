@@ -26,7 +26,11 @@ General writing guidelines:
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Update `status:` in `plan/issues/*.md` for finished and in-progress items
+3. **Update issue status** - Update `status:` in `plan/issues/*.md` for every touched issue:
+   - Move active work to `in_progress`
+   - Move only fully aligned work to `done` (implementation + tests + docs/examples/acceptance criteria)
+   - If follow-up issues expose drift in a `done` issue, move it back to `in_progress`
+   - Keep epic status in sync with child statuses (`in_progress` while any child is not done)
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase

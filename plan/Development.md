@@ -69,7 +69,16 @@ Use headings like the current issues do:
 
 ### Status updates
 - Move work forward by updating `status:` in frontmatter.
-- When finishing an issue, set `status: done` and ensure the implementation is merged and pushed (per `AGENTS.md` session workflow).
+- Update status in the same session where you change code/docs/tests for that issue (do not defer status hygiene).
+- Use statuses consistently:
+  - `open`: not started or paused backlog work
+  - `in_progress`: actively being worked this session or partially complete
+  - `done`: implementation, tests, and user-facing docs/examples/acceptance criteria are all aligned
+- If follow-up issues reveal acceptance-criteria or docs-contract drift for a `done` issue, move that issue back to `in_progress` until alignment is restored.
+- Keep epics accurate:
+  - Set epic `status: in_progress` while any child issue is `open`/`in_progress`
+  - Set epic `status: done` only when all child issues are `done`, or remaining work has been explicitly moved to non-child follow-up issues
+- When finishing an issue, ensure implementation is merged and pushed (per `AGENTS.md` session workflow) before marking `done`.
 
 ### Frequently used `mdix` commands for issues
 In this repo, issue files live under `plan/issues/`. These commands assume you are running from the repo root.
