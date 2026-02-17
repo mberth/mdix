@@ -8,6 +8,7 @@ from typing import Any
 import click
 
 from .frontmatter_io import format_frontmatter_yaml, read_frontmatter
+from .schema import inventory_vault, load_contract, migrate_vault, validate_vault
 from .vault import iter_markdown_files
 
 
@@ -25,6 +26,16 @@ def _emit(value: Any, *, human: bool) -> None:
         return
 
     click.echo(json.dumps(value, sort_keys=True, ensure_ascii=False))
+
+
+def _resolve_human_mode(default_human: bool, human: bool, json_mode: bool) -> bool:
+    if human and json_mode:
+        raise click.ClickException("Choose at most one of --human or --json.")
+    if human:
+        return True
+    if json_mode:
+        return False
+    return default_human
 
 
 def _summarize_q_errors(items: list[dict[str, Any]]) -> list[str]:
@@ -241,6 +252,146 @@ def fm_lint(ctx: click.Context) -> None:  # noqa: ARG001 - ctx for consistent si
 @click.pass_context
 def new(ctx: click.Context) -> None:  # noqa: ARG001 - ctx for consistent signature
     raise click.ClickException("Not yet implemented")
+
+
+@cli.group(help="Vault schema contract commands (inventory/validate/migrate).")
+def schema() -> None:
+    pass
+
+
+@schema.command(help="Inventory frontmatter field usage across the vault.")
+@click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
+@click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
+@click.pass_context
+def inventory(ctx: click.Context, human_mode: bool, json_mode: bool) -> None:
+    root: Path = ctx.obj["root"]
+    default_human: bool = ctx.obj["human"]
+    human = _resolve_human_mode(default_human, human_mode, json_mode)
+
+    result = inventory_vault(root)
+    if not human:
+        _emit(result, human=False)
+        return
+
+    summary = result["summary"]
+    click.echo(
+        (
+            f"files_scanned={summary['files_scanned']} "
+            f"files_with_frontmatter={summary['files_with_frontmatter']} "
+            f"parse_errors={summary['parse_errors']} "
+            f"distinct_fields={summary['distinct_fields']}"
+        )
+    )
+    for field in result["fields"]:
+        click.echo(f"- {field['field']}: {field['count']}")
+
+
+@schema.command(help="Validate vault frontmatter against the schema contract.")
+@click.option(
+    "--schema-path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to schema contract file (default: <root>/mdix.schema.yml).",
+)
+@click.option("--strict/--no-strict", default=True, help="Exit non-zero when violations are found.")
+@click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
+@click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
+@click.pass_context
+def validate(
+    ctx: click.Context,
+    schema_path: Path | None,
+    strict: bool,
+    human_mode: bool,
+    json_mode: bool,
+) -> None:
+    root: Path = ctx.obj["root"]
+    default_human: bool = ctx.obj["human"]
+    human = _resolve_human_mode(default_human, human_mode, json_mode)
+
+    resolved_schema = schema_path.resolve() if schema_path is not None else (root / "mdix.schema.yml").resolve()
+    if not resolved_schema.exists():
+        raise click.ClickException(f"Schema file not found: {resolved_schema}")
+
+    try:
+        contract = load_contract(resolved_schema)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+
+    result = validate_vault(root, contract)
+
+    if not human:
+        _emit(result, human=False)
+    else:
+        summary = result["summary"]
+        click.echo(
+            (
+                f"files_scanned={summary['files_scanned']} "
+                f"files_valid={summary['files_valid']} "
+                f"files_with_violations={summary['files_with_violations']} "
+                f"parse_errors={summary['parse_errors']} "
+                f"violations={summary['violations']}"
+            )
+        )
+        for violation in result["violations"]:
+            field = violation["field"] if violation["field"] is not None else "-"
+            click.echo(f"- {violation['path']} [{violation['code']}] {field}: {violation['message']}")
+
+    if strict and result["summary"]["violations"] > 0:
+        ctx.exit(2)
+
+
+@schema.command(help="Migrate legacy frontmatter keys into canonical schema keys.")
+@click.option(
+    "--schema-path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to schema contract file (default: <root>/mdix.schema.yml).",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Preview changes without writing files.")
+@click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
+@click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
+@click.pass_context
+def migrate(
+    ctx: click.Context,
+    schema_path: Path | None,
+    dry_run: bool,
+    human_mode: bool,
+    json_mode: bool,
+) -> None:
+    root: Path = ctx.obj["root"]
+    default_human: bool = ctx.obj["human"]
+    human = _resolve_human_mode(default_human, human_mode, json_mode)
+
+    resolved_schema = schema_path.resolve() if schema_path is not None else (root / "mdix.schema.yml").resolve()
+    if not resolved_schema.exists():
+        raise click.ClickException(f"Schema file not found: {resolved_schema}")
+
+    try:
+        contract = load_contract(resolved_schema)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+
+    result = migrate_vault(root, contract, dry_run=dry_run)
+    if not human:
+        _emit(result, human=False)
+        return
+
+    summary = result["summary"]
+    click.echo(
+        (
+            f"files_scanned={summary['files_scanned']} "
+            f"files_changed={summary['files_changed']} "
+            f"operations={summary['operations']} "
+            f"parse_errors={summary['parse_errors']} "
+            f"dry_run={summary['dry_run']}"
+        )
+    )
+    for item in result["changes"]:
+        if item["status"] == "parse_error":
+            click.echo(f"- {item['path']} [parse_error]")
+            continue
+        for change in item["changes"]:
+            click.echo(f"- {item['path']} rename {change['from']} -> {change['to']}")
 
 
 def main() -> None:

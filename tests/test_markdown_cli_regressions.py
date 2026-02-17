@@ -110,9 +110,10 @@ def _parse_spec_cases(spec_path: Path) -> list[CommandCase]:
     return cases
 
 
-def _run_bash(command: str, *, vault_root: Path) -> subprocess.CompletedProcess[str]:
+def _run_bash(command: str, *, vault_root: Path, schema_drift_root: Path) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["VAULT_ROOT"] = str(vault_root)
+    env["SCHEMA_DRIFT_ROOT"] = str(schema_drift_root)
     return subprocess.run(
         shlex.split("bash -lc " + shlex.quote(command)),
         cwd=REPO_ROOT,
@@ -124,9 +125,17 @@ def _run_bash(command: str, *, vault_root: Path) -> subprocess.CompletedProcess[
 
 
 @pytest.mark.parametrize("spec_path", sorted(SPECS_DIR.glob("*.md")))
-def test_markdown_regressions(spec_path: Path, copied_fixture_vault: Path) -> None:
+def test_markdown_regressions(
+    spec_path: Path,
+    copied_fixture_vault: Path,
+    copied_schema_drift_vault: Path,
+) -> None:
     for case in _parse_spec_cases(spec_path):
-        proc = _run_bash(case.command, vault_root=copied_fixture_vault)
+        proc = _run_bash(
+            case.command,
+            vault_root=copied_fixture_vault,
+            schema_drift_root=copied_schema_drift_vault,
+        )
         assert proc.returncode == 0, (
             f"{case.source} command failed with exit code {proc.returncode}\n"
             f"command: {case.command}\n"

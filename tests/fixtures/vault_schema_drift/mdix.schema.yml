@@ -1,0 +1,30 @@
+version: 1
+fields:
+  title:
+    type: string
+    required: true
+  type:
+    type: string
+    required: true
+    enum:
+      - person
+      - discovery
+      - media
+      - subject
+  position:
+    type: string
+  kontakt.email:
+    type: string
+  status:
+    type: string
+    enum:
+      - identified
+      - lead
+      - zu_kontaktieren
+migrations:
+  - op: rename
+    from: rolle
+    to: position
+  - op: rename
+    from: kontakt_email
+    to: kontakt.email

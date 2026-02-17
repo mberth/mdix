@@ -93,6 +93,15 @@ Show frontmatter for a specific note:
 mdix fm show path/to/note.md
 ```
 
+Validate and migrate a vault schema contract:
+
+```bash
+mdix --root ~/notes schema inventory
+mdix --root ~/notes schema validate
+mdix --root ~/notes schema migrate --dry-run
+mdix --root ~/notes schema migrate
+```
+
 ## Agent-friendly output
 
 - text output by default for interactive use
@@ -111,6 +120,36 @@ mdix q | jq 'length'
   - add `--fail-on-errors` (alias: `--strict`) to emit an error summary to stderr and exit non-zero when any item has `errors`
 - `mdix find` - quick text search
 - `mdix fm show` - frontmatter inspection
+- `mdix schema inventory` - frontmatter key inventory and drift visibility
+- `mdix schema validate` - deterministic schema violations for CI/local gates (exit code `2` on violations in strict mode)
+- `mdix schema migrate` - safe key migration transforms with dry-run preview
+
+## Schema contract (`mdix.schema.yml`)
+
+Place an `mdix.schema.yml` in the vault root (or pass `--schema-path`):
+
+```yaml
+version: 1
+fields:
+  title:
+    type: string
+    required: true
+  type:
+    type: string
+    required: true
+    enum: [person, discovery, media, subject]
+  position:
+    type: string
+  kontakt.email:
+    type: string
+migrations:
+  - op: rename
+    from: rolle
+    to: position
+  - op: rename
+    from: kontakt_email
+    to: kontakt.email
+```
 
 See command help:
 
