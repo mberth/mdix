@@ -1,0 +1,15 @@
+version: 1
+fields:
+  title:
+    type: string
+    required: true
+  type:
+    type: string
+    required: true
+    enum: [technology, project, company, concept]
+  status:
+    type: string
+    required: true
+    enum: [active, draft, deprecated]
+  tags:
+    type: array
