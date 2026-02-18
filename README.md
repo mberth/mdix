@@ -26,6 +26,8 @@ uvx mdix q | jq '[.[] | select((.errors | length) > 0) | {path, errors}]'
 
 `jq` is optional. It is used in examples to make JSON output easier to scan.
 
+Or explore the [energy storage demo vault](knowledge_bases/energy_storage/) included in this repo - a realistic knowledge base about grid-scale energy storage with 17 notes, a schema, and agent instructions. See [INSTRUCTIONS.md](knowledge_bases/energy_storage/INSTRUCTIONS.md) for the entry point an agent would use.
+
 ## Who it is for
 
 - People and agents building knowledge bases on top of Markdown vaults
