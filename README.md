@@ -1,20 +1,22 @@
 # mdix - Agent-friendly Markdown Toolkit
 
-**mdix** is a command-line interface for Markdown vaults: directory hierarchies of `*.md` files with optional YAML frontmatter.
+`mdix` is a CLI for Markdown vaults (`*.md` files with optional YAML frontmatter).
+It helps you search, validate, and normalize metadata safely and repeatably.
 
-It is built for agent workflows:
+Use it when your vault has drifted frontmatter and you want deterministic cleanup instead of one-off scripts.
 
-- predictable, scriptable commands
-- machine-friendly output is the default, but you can use `--human`
-- deterministic ordering for reproducibility
-- editor-agnostic behavior, it works well with Obsidian-style vaults, but is not tied to Obsidian
+## Why mdix
 
-## What's next
+- Deterministic output and ordering for reproducible CI and agent workflows
+- JSON-first command output that composes cleanly with `jq`, `rg`, and shell pipelines
+- Dry-run-first schema migration and frontmatter normalization
+- Editor-agnostic behavior (works well with Obsidian-style vaults, not tied to Obsidian)
 
-- search notes by text, path, and frontmatter filters
-- inspect and manage frontmatter fields
-- use stable output and exit codes in shell pipelines and CI
+## Who it is for
 
+- Maintainers of Markdown knowledge bases and note vaults
+- Teams enforcing frontmatter contracts across many files
+- Agent and automation workflows that need stable output and exit codes
 
 ## Installation
 
@@ -42,78 +44,56 @@ pipx install mdix
 pip install --user mdix
 ```
 
-## Quick start
+## 2-minute quick start
 
-By default, mdix will search the current working directory and its subdirectories.
-
-Later: Point `mdix` at a vault directory:
-
-```bash
-mdix --root ~/notes --help
-```
-
-Or set `MDIX_ROOT`
-
+By default, `mdix` searches the current working directory and subdirectories.
+Point it at your vault with `--root` or `MDIX_ROOT`.
 
 ```bash
-MDIX_ROOT=~/notes mdix --help
+# Optional: set vault root once
+export MDIX_ROOT=~/notes
+
+# 1) Inspect current state
+mdix schema validate | jq '.summary'
+
+# 2) Preview normalization (no writes)
+mdix fm normalize --dry-run \
+  --include "people/**" \
+  --map-value status active identified \
+  --set-default type person \
+  --derive title nickname \
+  --remove-null-keys
+
+# 3) Apply the same pass when preview looks right
+mdix fm normalize \
+  --include "people/**" \
+  --map-value status active identified \
+  --set-default type person \
+  --derive title nickname \
+  --remove-null-keys
 ```
 
-
-Search content:
+For smaller tasks:
 
 ```bash
 mdix find "attention is all you need"
-```
-
-List notes that contain a frontmatter field:
-
-```bash
 mdix ls --has fm.tags
-```
-
-`--has fm.<field>` checks frontmatter key presence. Keys with `null` values still count as present.
-To filter for non-null values, pipe `mdix q` into `jq`.
-
-Query by metadata:
-
-```bash
-mdix q
+mdix q --fail-on-errors
+mdix fm show path/to/note.md
 ```
 
 `mdix q` JSON output normalizes YAML `date`/`datetime` scalar values to ISO-8601 strings so output stays valid for `jq` and CI pipelines.
 
-Fail CI/jobs when parse errors are present, while still keeping JSON on stdout:
+## Core workflow: validate -> dry-run -> apply
 
-```bash
-mdix q --fail-on-errors
-```
-
-Show frontmatter for a specific note:
-
-```bash
-mdix fm show path/to/note.md
-```
-
-Validate and migrate a vault schema contract:
+Use this pattern for safe cleanup passes and reviewable commits:
 
 ```bash
 mdix --root ~/notes schema inventory
 mdix --root ~/notes schema validate --include "people/**" --exclude "people/archive/**"
 mdix --root ~/notes schema migrate --dry-run --include "people/**"
-mdix --root ~/notes schema migrate
-```
-
-Batch normalize recurring frontmatter cleanup operations:
-
-```bash
-mdix --root ~/notes fm normalize --dry-run \
-  --include "people/**" \
-  --map-value status active identified \
-  --set-default type person \
-  --derive title nickname \
-  --derive-from-filename title \
-  --remove-null-keys
+mdix --root ~/notes schema migrate --include "people/**"
+mdix --root ~/notes schema validate --include "people/**"
 ```
 
 Both `schema validate` and `schema migrate` report the effective schema source path in output under `schema`.
@@ -146,6 +126,44 @@ Practical notes:
 - Use `fm normalize --dry-run` for repeatable status/title/type/null cleanup flows instead of ad-hoc scripts.
 - Keep schema enums strict, then normalize legacy values in dedicated follow-up commits.
 - Use a frontmatter library (for example `python-frontmatter`) or `mdix` helpers for scripted edits; avoid ad-hoc delimiter parsing.
+
+### Real-world pattern: cleanup with focused commits
+
+When a vault has mixed entity types and legacy metadata, `mdix` works well as a deterministic cleanup engine:
+
+```bash
+# 1) Start with a baseline
+mdix --root ~/notes schema validate | jq '.summary'
+
+# 2) Run a narrow, deterministic normalization pass (dry-run first)
+mdix --root ~/notes fm normalize --dry-run \
+  --include "Organisations/**" \
+  --map-value status is_identified identified \
+  --set-default type organisation \
+  --derive title name \
+  --remove-null-keys
+
+# 3) Apply that one pass and commit only that slice
+mdix --root ~/notes fm normalize \
+  --include "Organisations/**" \
+  --map-value status is_identified identified \
+  --set-default type organisation \
+  --derive title name \
+  --remove-null-keys
+
+# 4) Run a second independent pass (for example null-key cleanup)
+mdix --root ~/notes fm normalize \
+  --include "People/**" \
+  --exclude "People/_TEMPLATE.md" \
+  --remove-null-keys
+```
+
+Why this helps:
+
+- Each pass is scoped and reviewable.
+- Dry-run and apply use the same command shape, reducing operator error.
+- Git history stays meaningful because each commit captures one cleanup intention.
+- You can re-run `schema validate` between passes to measure progress without touching unrelated areas.
 
 ## Agent-friendly output
 
