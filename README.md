@@ -1,22 +1,42 @@
 # mdix - Agent-friendly Markdown Toolkit
 
-`mdix` is a CLI for Markdown vaults (`*.md` files with optional YAML frontmatter).
-It helps you search, validate, and normalize metadata safely and repeatably.
+`mdix` is a CLI for Markdown knowledge bases that humans and AI agents edit together.
+It helps you search, validate, and normalize metadata in a way that stays predictable over time.
 
-Use it when your vault has drifted frontmatter and you want deterministic cleanup instead of one-off scripts.
+If you have ever ended up with mixed filename styles, drifting frontmatter keys, and inconsistent frontmatter values, this tool is for you.
 
-## Why mdix
+## Try it in 60 seconds
 
-- Deterministic output and ordering for reproducible CI and agent workflows
-- JSON-first command output that composes cleanly with `jq`, `rg`, and shell pipelines
-- Dry-run-first schema migration and frontmatter normalization
-- Editor-agnostic behavior (works well with Obsidian-style vaults, not tied to Obsidian)
+```bash
+# No install needed
+uvx mdix --help
+
+# Use the repository fixture vault
+export MDIX_ROOT="$PWD/tests/fixtures/vault_great_discoveries"
+
+# 1) text search across notes
+uvx mdix find relativity
+
+# 2) frontmatter presence filter
+uvx mdix ls --has fm.status
+
+# 3) find problems in front matter, like invalid yaml
+uvx mdix q | jq '[.[] | select((.errors | length) > 0) | {path, errors}]'
+```
+
+`jq` is optional. It is used in examples to make JSON output easier to scan.
 
 ## Who it is for
 
-- Maintainers of Markdown knowledge bases and note vaults
+- People and agents building knowledge bases on top of Markdown vaults
 - Teams enforcing frontmatter contracts across many files
 - Agent and automation workflows that need stable output and exit codes
+
+## Why this exists
+
+Short version: mdix helps keep Markdown knowledge bases reliable as structure evolves.
+Longer background, constraints, and the motivating problem are in [WHY.md](WHY.md).
+
 
 ## Installation
 
@@ -113,7 +133,7 @@ mdix --root ~/notes schema validate \
 
 # 3) Preview and apply scoped migrations
 mdix --root ~/notes schema migrate --dry-run --include "Personen/**"
-mdix --root ~/notes schema migrate
+mdix --root ~/notes schema migrate --include "Personen/**"
 
 # 4) Re-validate, then commit that single cleanup step
 mdix --root ~/notes schema validate --include "Personen/**"
@@ -167,8 +187,8 @@ Why this helps:
 
 ## Agent-friendly output
 
-- text output by default for interactive use
-- json is the default for machine consumption
+- machine-parseable output for automation (`jq`, CI, scripts)
+- human-readable output for interactive terminal usage
 - stable ordering to support reproducible automation
 
 Example:

@@ -21,7 +21,20 @@ When generating markdown:
 
 General writing guidelines:
 
-- Tone: be a competent technical writer 
+- Tone baseline: friendly senior developer who has been there, done that
+- Optimize for information transfer: concrete, specific, and operationally useful
+- Avoid MBA/consultant phrasing, hype language, and abstract framing
+- Prefer plain, direct wording over slogans or "framework" language
+- Lead with the real problem and practical outcome
+- Use concise sections and bullets that help skimming without sounding robotic
+- Keep claims grounded in observable behavior (commands, outputs, constraints, trade-offs)
+
+Examples:
+
+- Less useful: "Leverage a robust metadata governance framework to unlock scalable knowledge operations."
+- Better: "Use `mdix schema validate` to find frontmatter drift, then run scoped `mdix fm normalize --dry-run` passes before applying changes."
+- Less useful: "Implement strategic standardization for naming consistency."
+- Better: "Pick one filename convention and enforce it with small, reviewable cleanup commits."
 
 ## Landing the Plane (Session Completion)
 
