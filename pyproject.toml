@@ -1,10 +1,10 @@
 [project]
 name = "mdix"
 version = "0.1.0"
-description = "Add your description here"
+description = "mdix is a command-line toolkit that keeps Markdown knowledge bases consistent, especially when humans and AI agents maintain them together."
 readme = "README.md"
 authors = [
-    { name = "Matthias Berth", email = "matthias@matthiasberth.com" }
+    { name = "Matthias Berth", email = "kontakt@matthiasberth.com" }
 ]
 requires-python = ">=3.11"
 dependencies = [
