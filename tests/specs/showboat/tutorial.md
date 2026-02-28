@@ -4,8 +4,11 @@
 <!-- showboat-id: b3f6f254-1fd2-4e3f-9b3f-e19800d3758c -->
 
 This walkthrough demonstrates common tasks against the great discoveries fixture vault.
+It is intentionally linear: start broad, then narrow the scope, then inspect structure and quality.
+If you run these snippets in order, each command builds on the mental model from the previous one.
 
 List all notes in deterministic path order:
+This gives you a quick inventory baseline before you start filtering or validating.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_great_discoveries' ls
@@ -16,6 +19,8 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries' ls
 ```
 
 Search for a topic across the whole vault:
+Use this when you know a concept but not where it appears.
+The result includes both frontmatter and body matches, with line numbers for fast follow-up.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_great_discoveries' find relativity
@@ -26,6 +31,8 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries' find relativity
 ```
 
 Scope work to a subfolder and filter to notes with a status field:
+This pattern is useful when different folders represent different workflows (for example, people vs media).
+Filtering on `fm.status` is a pragmatic way to focus on records that are actively tracked.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_great_discoveries/people' ls --has fm.status
@@ -36,6 +43,8 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries/people' ls --has fm.s
 ```
 
 Inspect frontmatter for a single note:
+`fm show` is the safest first check when a note behaves unexpectedly in downstream commands.
+You get a normalized JSON object with parse errors separated from extracted metadata.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show people/marie-curie.md
@@ -46,6 +55,8 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show people/marie
 ```
 
 Inspect a note with malformed frontmatter and get structured parse errors:
+The important detail here is that mdix reports the file and error type without crashing the whole run.
+That behavior lets you keep auditing large vaults even when a few files are broken.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show media/broken-frontmatter.md
@@ -56,6 +67,8 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show media/broken
 ```
 
 Get an indexed snapshot of the whole vault, including parser errors per file:
+Think of `q` as a bulk version of `fm show` over all notes.
+It is useful for scripting, audits, and quickly spotting inconsistent metadata shape across files.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_great_discoveries' q
@@ -66,6 +79,8 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries' q
 ```
 
 Inspect schema drift on the dedicated schema fixture vault:
+`schema inventory` is descriptive: it tells you what fields currently exist, not whether they are valid.
+Run this first when onboarding an unknown vault to understand naming drift and field variants.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_schema_drift' schema inventory
@@ -76,6 +91,8 @@ uv run mdix --root 'tests/fixtures/vault_schema_drift' schema inventory
 ```
 
 Validate against `mdix.schema.yml` (non-strict for demo continuity):
+Validation turns that descriptive inventory into enforceable checks.
+`--no-strict` keeps the command focused on violations while avoiding hard-fail behavior in this tutorial flow.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_schema_drift' schema validate --no-strict
@@ -86,6 +103,8 @@ uv run mdix --root 'tests/fixtures/vault_schema_drift' schema validate --no-stri
 ```
 
 Preview migration transforms safely with dry-run:
+This is the “trust, then apply” step: inspect proposed edits before writing anything.
+The output shows per-file operations so you can confirm intent and estimate migration impact.
 
 ```bash
 uv run mdix --root 'tests/fixtures/vault_schema_drift' schema migrate --dry-run
