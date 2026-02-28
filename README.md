@@ -1,32 +1,11 @@
 # mdix - Agent-friendly Markdown Toolkit
 
 `mdix` is a CLI for Markdown knowledge bases that humans and AI agents edit together.
-It helps you search, validate, and normalize metadata in a way that stays predictable over time.
+It helps you search, validate, and normalize frontmatter in a way that stays predictable over time.
 
-If you have ever ended up with mixed filename styles, drifting frontmatter keys, and inconsistent frontmatter values, this tool is for you.
+If you have ever ended up with mixed filename styles, drifting frontmatter keys, and inconsistent
+frontmatter values, this tool is for you.
 
-## Try it in 60 seconds
-
-```bash
-# No install needed
-uvx mdix --help
-
-# Use the repository fixture vault
-export MDIX_ROOT="$PWD/tests/fixtures/vault_great_discoveries"
-
-# 1) text search across notes
-uvx mdix find relativity
-
-# 2) frontmatter presence filter
-uvx mdix ls --has fm.status
-
-# 3) find problems in front matter, like invalid yaml
-uvx mdix q | jq '[.[] | select((.errors | length) > 0) | {path, errors}]'
-```
-
-`jq` is optional. It is used in examples to make JSON output easier to scan.
-
-Or explore the [energy storage demo vault](knowledge_bases/energy_storage/) included in this repo - a realistic knowledge base about grid-scale energy storage with 17 notes, a schema, and agent instructions. See [INSTRUCTIONS.md](knowledge_bases/energy_storage/INSTRUCTIONS.md) for the entry point an agent would use.
 
 ## Who it is for
 
@@ -34,206 +13,80 @@ Or explore the [energy storage demo vault](knowledge_bases/energy_storage/) incl
 - Teams enforcing frontmatter contracts across many files
 - Agent and automation workflows that need stable output and exit codes
 
-## Why this exists
+## Prerequisites
 
-Short version: mdix helps keep Markdown knowledge bases reliable as structure evolves.
-Longer background, constraints, and the motivating problem are in [WHY.md](WHY.md).
-
+- Python 3.11+
+- [`uv`](https://docs.astral.sh/uv/) (recommended) or `pipx`/`pip`
+- [`jq`](https://jqlang.org/) (optional, used in examples to filter JSON output)
 
 ## Installation
 
 ### Recommended: run with `uvx` (no install)
 
-If you already have `uv`, run `mdix` in an isolated environment:
-
 ```bash
 uvx mdix --help
-uvx mdix --root ~/notes find "backprop"
+uvx mdix --root ~/notes find "search term"
 ```
 
-### Install as a tool with `uv`
+### Install as a tool
 
 ```bash
 uv tool install mdix
-mdix --help
-```
-
-### Fallback options: `pipx` / `pip`
-
-```bash
+# or
 pipx install mdix
 # or
 pip install --user mdix
 ```
 
-## 2-minute quick start
+## Quick start
 
-By default, `mdix` searches the current working directory and subdirectories.
-Point it at your vault with `--root` or `MDIX_ROOT`.
-
-```bash
-# Optional: set vault root once
-export MDIX_ROOT=~/notes
-
-# 1) Inspect current state
-mdix schema validate | jq '.summary'
-
-# 2) Preview normalization (no writes)
-mdix fm normalize --dry-run \
-  --include "people/**" \
-  --map-value status active identified \
-  --set-default type person \
-  --derive title nickname \
-  --remove-null-keys
-
-# 3) Apply the same pass when preview looks right
-mdix fm normalize \
-  --include "people/**" \
-  --map-value status active identified \
-  --set-default type person \
-  --derive title nickname \
-  --remove-null-keys
-```
-
-For smaller tasks:
+The repo includes a small fixture vault you can use immediately - no setup needed:
 
 ```bash
-mdix find "attention is all you need"
-mdix ls --has fm.tags
-mdix q --fail-on-errors
-mdix fm show path/to/note.md
+export MDIX_ROOT="$PWD/tests/fixtures/vault_great_discoveries"
+
+# Text search across notes
+uvx mdix find relativity
+
+# List notes that have a specific frontmatter key
+uvx mdix ls --has fm.status
+
+# Query all notes as JSON; filter with jq to show only those with errors
+uvx mdix q | jq '[.[] | select((.errors | length) > 0) | {path, errors}]'
 ```
 
-`mdix q` JSON output normalizes YAML `date`/`datetime` scalar values to ISO-8601 strings so output stays valid for `jq` and CI pipelines.
-
-## Core workflow: validate -> dry-run -> apply
-
-Use this pattern for safe cleanup passes and reviewable commits:
-
-```bash
-mdix --root ~/notes schema inventory
-mdix --root ~/notes schema validate --include "people/**" --exclude "people/archive/**"
-mdix --root ~/notes schema migrate --dry-run --include "people/**"
-mdix --root ~/notes schema migrate --include "people/**"
-mdix --root ~/notes schema validate --include "people/**"
-```
-
-Both `schema validate` and `schema migrate` report the effective schema source path in output under `schema`.
-
-## Vault cleanup tips (incremental workflow)
-
-For mixed-content vaults, use small scoped cleanup steps and commit after each step:
-
-```bash
-# 1) Inventory drift first
-mdix --root ~/notes schema inventory | jq '.summary'
-
-# 2) Validate only the target collection
-mdix --root ~/notes schema validate \
-  --include "Personen/**" \
-  --exclude "Personen/_TEMPLATE.md"
-
-# 3) Preview and apply scoped migrations
-mdix --root ~/notes schema migrate --dry-run --include "Personen/**"
-mdix --root ~/notes schema migrate --include "Personen/**"
-
-# 4) Re-validate, then commit that single cleanup step
-mdix --root ~/notes schema validate --include "Personen/**"
-```
-
-Practical notes:
-
-- Prefer scoping with `--include`/`--exclude` to avoid noisy violations outside the current cleanup target.
-- Use `schema migrate --dry-run` before writes and keep each migration pass as a separate commit.
-- Use `fm normalize --dry-run` for repeatable status/title/type/null cleanup flows instead of ad-hoc scripts.
-- Keep schema enums strict, then normalize legacy values in dedicated follow-up commits.
-- Use a frontmatter library (for example `python-frontmatter`) or `mdix` helpers for scripted edits; avoid ad-hoc delimiter parsing.
-
-### Real-world pattern: cleanup with focused commits
-
-When a vault has mixed entity types and legacy metadata, `mdix` works well as a deterministic cleanup engine:
-
-```bash
-# 1) Start with a baseline
-mdix --root ~/notes schema validate | jq '.summary'
-
-# 2) Run a narrow, deterministic normalization pass (dry-run first)
-mdix --root ~/notes fm normalize --dry-run \
-  --include "Organisations/**" \
-  --map-value status is_identified identified \
-  --set-default type organisation \
-  --derive title name \
-  --remove-null-keys
-
-# 3) Apply that one pass and commit only that slice
-mdix --root ~/notes fm normalize \
-  --include "Organisations/**" \
-  --map-value status is_identified identified \
-  --set-default type organisation \
-  --derive title name \
-  --remove-null-keys
-
-# 4) Run a second independent pass (for example null-key cleanup)
-mdix --root ~/notes fm normalize \
-  --include "People/**" \
-  --exclude "People/_TEMPLATE.md" \
-  --remove-null-keys
-```
-
-Why this helps:
-
-- Each pass is scoped and reviewable.
-- Dry-run and apply use the same command shape, reducing operator error.
-- Git history stays meaningful because each commit captures one cleanup intention.
-- You can re-run `schema validate` between passes to measure progress without touching unrelated areas.
-
-## Agent-friendly output
-
-- machine-parseable output for automation (`jq`, CI, scripts)
-- human-readable output for interactive terminal usage
-- stable ordering to support reproducible automation
-
-Example:
-
-```bash
-mdix q | jq 'length'
-```
+There is also an [energy storage demo vault](knowledge_bases/energy_storage/) - 17 notes with a
+schema and agent instructions. See
+[INSTRUCTIONS.md](knowledge_bases/energy_storage/INSTRUCTIONS.md) for the entry point an agent
+would use.
 
 ## Commands
 
-- `mdix q` - index/query notes as a JSON list (`path`, `frontmatter`, `errors`)
-  - add `--fail-on-errors` (alias: `--strict`) to emit an error summary to stderr and exit non-zero when any item has `errors`
-  - YAML `date`/`datetime` scalars are serialized as ISO-8601 strings in JSON output
-- `mdix find` - quick text search
-- `mdix fm show` - frontmatter inspection
-- `mdix fm normalize` - deterministic batch frontmatter normalization with dry-run preview
-- `mdix schema inventory` - frontmatter key inventory and drift visibility
-- `mdix schema validate` - deterministic schema violations for CI/local gates (exit code `2` on violations in strict mode), scoped to files with parseable frontmatter
-  - supports repeatable `--include` and `--exclude` glob filters for path scoping
-- `mdix schema migrate` - safe key/value/default/null migration transforms with dry-run preview
-  - supports repeatable `--include` and `--exclude` glob filters for path scoping
+| Command | What it does |
+|---|---|
+| `mdix q` | Index all notes as JSON (`path`, `frontmatter`, `errors`). YAML dates are serialized as ISO-8601. Add `--fail-on-errors` / `--strict` to exit non-zero on parse errors. |
+| `mdix find <text>` | Full-text search across notes |
+| `mdix ls` | List notes, optionally filtered by frontmatter keys (`--has fm.status`) |
+| `mdix fm show <path>` | Inspect frontmatter on one note |
+| `mdix fm normalize` | Batch frontmatter normalization: value remapping, defaults, derived fields, null-key removal. Always supports `--dry-run`. |
+| `mdix schema inventory` | Frontmatter key inventory and drift visibility across the vault |
+| `mdix schema validate` | Check notes against `mdix.schema.yml`. Exits `2` on violations. Supports `--include`/`--exclude` glob filters. |
+| `mdix schema migrate` | Apply key/value/default/null migrations defined in the schema. Supports `--dry-run` and `--include`/`--exclude`. |
 
-## Epic 17 motivating vault pointer
+**Read-only commands** (never write files): `q`, `find`, `ls`, `fm show`, `schema inventory`, `schema validate`, and any command with `--dry-run`.
 
-Epic 17 examples target a repository-local pointer at `tmp/ai-barcamp-greifswald`.
+**Commands that write files**: `fm normalize` (without `--dry-run`), `schema migrate` (without `--dry-run`).
 
-- The pointer is optional and read-only for validation/migration dry-runs.
-- Local setup assumes the motivating vault is available at `../ai-barcamp-greifswald` relative to this repo (for example `/Users/<you>/work/ai-barcamp-greifswald`).
-- Recreate the pointer with:
+Full help:
 
 ```bash
-ln -sfn ../../ai-barcamp-greifswald tmp/ai-barcamp-greifswald
-```
-
-- Verify setup (fails fast with a clear message when broken):
-
-```bash
-scripts/check-epic17-vault.sh
+mdix --help
+mdix <command> --help
 ```
 
 ## Schema contract (`mdix.schema.yml`)
 
-Place an `mdix.schema.yml` in the vault root (or pass `--schema-path`):
+Place an `mdix.schema.yml` in your vault root (or pass `--schema-path`):
 
 ```yaml
 version: 1
@@ -267,35 +120,34 @@ migrations:
     field: legacy_note
 ```
 
-See command help:
+Then validate and migrate:
 
 ```bash
-mdix --help
-mdix <command> --help
+mdix --root ~/notes schema validate
+mdix --root ~/notes schema migrate --dry-run
+mdix --root ~/notes schema migrate
 ```
 
-## Development
+## Agent-friendly output
 
-This project uses `uv` for dependency management.
-The project supports Python `>=3.11` and CI runs on Python 3.11.
+- Machine-parseable JSON for automation (`jq`, CI, scripts)
+- Human-readable output for interactive terminal usage
+- Stable ordering for reproducible automation
 
 ```bash
-uv sync
-uv run ruff check .
-uv run pytest
+mdix q | jq 'length'
 ```
+
+## Going further
+
+- [docs/workflows.md](docs/workflows.md) - Incremental cleanup patterns, scoped migration recipes, CI gates
+- [docs/why.md](docs/why.md) - Background on the problem this solves
+
 
 ## Roadmap
 
-- richer batch-edit workflows with preview
-- document-outline and structural reading helpers for long notes
-
-## Design goals
-
-- be a good unix utility
-- agents first: machine readable output is the default, i.e. lines, json or jsonl
-- easy to discover functionality
-- composable: works well with `rg`, `jq`, `xargs`, and CI
+- Richer batch-edit workflows with preview
+- Document-outline and structural reading helpers for long notes
 
 ## Status
 
