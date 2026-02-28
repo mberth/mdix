@@ -14,6 +14,161 @@ from .frontmatter_io import format_frontmatter_yaml, read_frontmatter
 from .schema import MigrationOperation, inventory_vault, load_contract, migrate_vault, normalize_vault, validate_vault
 from .vault import iter_markdown_files
 
+CLI_HELP = """Agent-friendly Markdown toolkit for deterministic vault automation.
+
+`mdix` reads and updates Markdown vaults where frontmatter quality matters.
+Default output is machine-friendly JSON so coding agents can pipe to `jq`,
+parse with scripts, and make decisions from stable structures.
+"""
+
+CLI_EPILOG = """\b
+Quick usage:
+  mdix [--root <vault>] <command> [options]
+
+\b
+Global behavior:
+  - Default output is machine-friendly JSON.
+  - Use --human to force terminal-friendly text output where supported.
+  - Set --root once (or MDIX_ROOT) to scope all commands to a vault.
+
+\b
+Command guide:
+  ls                 List markdown files (optional frontmatter presence filter).
+  find <query>       Search raw note text and return path/line matches.
+  q                  Index all notes as JSON: path, frontmatter, parse errors.
+  fm show <path>     Parse and report frontmatter for one file.
+  fm normalize ...   Apply deterministic metadata normalization transforms.
+  schema inventory   Report observed frontmatter fields and counts.
+  schema validate    Validate notes against mdix.schema.yml.
+  schema migrate     Apply migration rules from mdix.schema.yml.
+
+\b
+Automation patterns:
+  - detect malformed frontmatter:
+    mdix q --fail-on-errors
+  - validate one sub-tree:
+    mdix schema validate --include "people/**"
+  - preview migration safely:
+    mdix schema migrate --dry-run
+  - inspect one note's metadata:
+    mdix fm show people/albert-einstein.md
+
+\b
+Exit codes to rely on in agents/CI:
+  - q --fail-on-errors exits 2 when any note has parse errors.
+  - find exits 1 when there are no matches.
+  - schema validate exits 2 on violations in strict mode (default).
+
+\b
+Help drill-down:
+  mdix <command> --help
+  mdix fm --help
+  mdix schema --help
+"""
+
+FM_HELP = """Frontmatter operations for inspection and deterministic normalization."""
+
+FM_EPILOG = """\b
+Quick usage:
+  mdix fm <command> [options]
+
+\b
+Recommended workflow:
+  - inspect one file with `fm show` before bulk edits
+  - preview bulk edits with `fm normalize --dry-run`
+  - apply the same normalize command without `--dry-run`
+
+\b
+Commands:
+  show <path>         Parse one note and return frontmatter + parse errors.
+  normalize ...       Apply deterministic normalization operations across files.
+  set / unset / lint  Reserved command names; not implemented yet.
+
+\b
+Normalization operations (repeatable where noted):
+  --map-value FIELD FROM TO
+  --set-default FIELD VALUE
+  --derive TARGET SOURCE
+  --derive-from-filename FIELD
+  --unset-if-null FIELD
+  --remove-null-keys
+
+\b
+Examples:
+  mdix fm show people/marie-curie.md
+  mdix fm normalize --dry-run --remove-null-keys
+  mdix fm normalize --set-default type person
+
+\b
+Output behavior:
+  - default output is machine-friendly JSON
+  - use global `--human` (or command-level `--human` where supported) for text
+  - `fm normalize` supports `--human` and `--json` overrides
+"""
+
+SCHEMA_HELP = """Schema contract commands for field inventory, validation, and migration."""
+
+SCHEMA_EPILOG = """\b
+Quick usage:
+  mdix schema <command> [options]
+
+\b
+Contract file:
+  - default schema path: <root>/mdix.schema.yml
+  - override with: --schema-path <file>
+
+\b
+Schema file format (`mdix.schema.yml`):
+  - top-level keys: `version`, `fields`, optional `migrations`
+  - `fields.<name>` supports constraints like:
+    - `type`: string | number | boolean | array | object
+    - `required`: true/false
+    - `enum`: [allowed, values]
+  - `migrations` is an ordered list of transforms
+    (for example: rename, value_map, set_default, unset_if_null)
+
+\b
+Minimal example:
+  version: 1
+  fields:
+    title:
+      type: string
+      required: true
+    type:
+      type: string
+      required: true
+      enum: [person, discovery, media, subject]
+  migrations:
+    - op: rename
+      from: rolle
+      to: position
+
+\b
+Commands:
+  inventory           Report observed frontmatter fields and usage counts.
+  validate            Check notes against schema rules and enum/required fields.
+  migrate             Apply schema-defined migration operations (safe with dry-run).
+
+\b
+Agent/CI workflow:
+  1) mdix schema inventory
+  2) mdix schema validate --include "people/*"
+  3) mdix schema migrate --dry-run --include "people/*"
+  4) mdix schema migrate --include "people/*"
+  5) mdix schema validate --include "people/*"
+
+\b
+Exit codes to rely on:
+  - `schema validate` exits 2 on violations in strict mode (default)
+  - `schema validate --no-strict` reports violations but does not fail on them
+
+\b
+Examples:
+  mdix schema inventory
+  mdix schema validate --include "people/*"
+  mdix schema migrate --dry-run
+"""
+
 
 def _relpath_posix(path: Path, root: Path) -> str:
     return path.resolve().relative_to(root.resolve()).as_posix()
@@ -88,7 +243,11 @@ def _not_implemented(_: click.Context, __: click.Parameter, value: bool) -> bool
     return value
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.group(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help=CLI_HELP,
+    epilog=CLI_EPILOG,
+)
 @click.option(
     "--root",
     type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
@@ -107,7 +266,6 @@ def _not_implemented(_: click.Context, __: click.Parameter, value: bool) -> bool
 )
 @click.pass_context
 def cli(ctx: click.Context, root: Path, human: bool) -> None:
-    """Agent-friendly Markdown toolkit."""
     ctx.ensure_object(dict)
     ctx.obj["root"] = root.resolve()
     ctx.obj["human"] = human
@@ -215,7 +373,7 @@ def find(ctx: click.Context, query: str) -> None:
     _emit(matches, human=False)
 
 
-@cli.group(help="Frontmatter operations (show/set/unset/lint).")
+@cli.group(help=FM_HELP, epilog=FM_EPILOG)
 def fm() -> None:
     pass
 
@@ -425,7 +583,7 @@ def new(ctx: click.Context) -> None:  # noqa: ARG001 - ctx for consistent signat
     raise click.ClickException("Not yet implemented")
 
 
-@cli.group(help="Vault schema contract commands (inventory/validate/migrate).")
+@cli.group(help=SCHEMA_HELP, epilog=SCHEMA_EPILOG)
 def schema() -> None:
     pass
 
