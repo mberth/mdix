@@ -34,4 +34,3 @@ def iter_markdown_files(root: Path, *, ignored_dirs: frozenset[str] = DEFAULT_IG
         for name in sorted(filenames):
             if name.endswith(".md"):
                 yield Path(dirpath) / name
-

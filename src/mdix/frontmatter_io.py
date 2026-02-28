@@ -69,4 +69,3 @@ def format_frontmatter_yaml(frontmatter_obj: dict[str, Any] | None) -> str:
     if frontmatter_obj is None:
         return ""
     return yaml.safe_dump(frontmatter_obj, sort_keys=True, allow_unicode=True).rstrip() + "\n"
-

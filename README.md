@@ -40,10 +40,12 @@ pip install --user mdix
 
 ## Quick start
 
-The repo includes a small fixture vault you can use immediately - no setup needed:
+No git clone needed. Download a demo vault and start exploring:
 
 ```bash
-export MDIX_ROOT="$PWD/tests/fixtures/vault_great_discoveries"
+# Copy a demo vault to your current directory
+uvx mdix demo great-discoveries
+cd great-discoveries
 
 # Text search across notes
 uvx mdix find relativity
@@ -55,10 +57,17 @@ uvx mdix ls --has fm.status
 uvx mdix q | jq '[.[] | select((.errors | length) > 0) | {path, errors}]'
 ```
 
-There is also an [energy storage demo vault](knowledge_bases/energy_storage/) - 17 notes with a
-schema and agent instructions. See
-[INSTRUCTIONS.md](knowledge_bases/energy_storage/INSTRUCTIONS.md) for the entry point an agent
-would use.
+There is also an energy storage vault (17 notes with a schema and agent instructions):
+
+```bash
+uvx mdix demo energy-storage
+cd energy-storage
+
+uvx mdix schema validate --human
+uvx mdix schema inventory --human
+```
+
+See `INSTRUCTIONS.md` in that vault for the entry point an agent would use.
 
 ## Commands
 

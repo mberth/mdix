@@ -4,9 +4,13 @@ import inspect
 import json
 import sys
 from datetime import date, datetime
+from importlib.resources import files
 from pathlib import Path
 from pathlib import PurePosixPath
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from importlib.resources.abc import Traversable
 
 import click
 import yaml
@@ -248,11 +252,7 @@ def _summarize_q_errors(items: list[dict[str, Any]]) -> list[str]:
     for item in errored:
         path = str(item.get("path", "<unknown>"))
         types = sorted(
-            {
-                str(err.get("type", "unknown_error"))
-                for err in item.get("errors", [])
-                if isinstance(err, dict)
-            }
+            {str(err.get("type", "unknown_error")) for err in item.get("errors", []) if isinstance(err, dict)}
         )
         type_summary = ", ".join(types) if types else "unknown_error"
         lines.append(f"- {path}: {type_summary}")
@@ -432,6 +432,77 @@ def find(ctx: click.Context, query: str) -> None:
     _emit(matches, human=False)
 
 
+_DEMO_VAULTS: dict[str, str] = {
+    "great-discoveries": "vault_great_discoveries",
+    "energy-storage": "energy_storage",
+}
+
+_DEMO_NEXT_STEPS: dict[str, list[str]] = {
+    "great-discoveries": [
+        "uvx mdix find relativity",
+        "uvx mdix ls --has fm.status",
+        "uvx mdix q | jq '[.[] | select((.errors | length) > 0) | {path, errors}]'",
+    ],
+    "energy-storage": [
+        "uvx mdix find lithium",
+        "uvx mdix schema validate",
+        "uvx mdix schema inventory --human",
+    ],
+}
+
+
+def _copy_tree(src: "Traversable", dest: Path) -> None:
+    """Recursively copy a Traversable (works for both installed packages and editable installs)."""
+    dest.mkdir(parents=True, exist_ok=True)
+    for item in src.iterdir():
+        if item.name == "__init__.py":
+            continue
+        if item.is_dir():
+            _copy_tree(item, dest / item.name)
+        else:
+            (dest / item.name).write_bytes(item.read_bytes())
+
+
+@cli.command(help="Copy a demo vault to a local directory for experimentation.")
+@click.argument("vault", required=False, metavar="VAULT")
+@click.option(
+    "--dest",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Destination directory (default: ./<vault-name>).",
+)
+def demo(vault: str | None, dest: Path | None) -> None:
+    if vault is None:
+        click.echo("Available demo vaults:\n")
+        for name, folder in _DEMO_VAULTS.items():
+            src = files("mdix") / "_examples" / folder
+            count = sum(1 for _ in src.iterdir() if not str(_).endswith("__init__.py"))
+            click.echo(f"  {name:<22}  {count} top-level items")
+        click.echo("\nUsage: uvx mdix demo <vault-name>")
+        return
+
+    if vault not in _DEMO_VAULTS:
+        names = ", ".join(_DEMO_VAULTS)
+        raise click.ClickException(f"Unknown vault '{vault}'. Choose one of: {names}")
+
+    folder = _DEMO_VAULTS[vault]
+    target = dest if dest is not None else Path.cwd() / vault
+
+    if target.exists():
+        raise click.ClickException(
+            f"Destination already exists: {target}\nRemove it first, or use --dest to pick a different path."
+        )
+
+    src = files("mdix") / "_examples" / folder
+    _copy_tree(src, target)
+
+    click.echo(f"Demo vault copied to: {target}\n")
+    click.echo("Get started:")
+    click.echo(f"  cd {target}")
+    for cmd in _DEMO_NEXT_STEPS.get(vault, []):
+        click.echo(f"  {cmd}")
+
+
 @cli.group(cls=MdixGroup, help=FM_HELP, epilog=FM_EPILOG)
 def fm() -> None:
     pass
@@ -578,7 +649,9 @@ def fm_normalize(
         operations.append(MigrationOperation(op="value_map", field=field, mapping=((source_value, target_value),)))
     for field, value_raw in set_defaults:
         operations.append(
-            MigrationOperation(op="set_default", field=field, value=_parse_yaml_value(value_raw, option_name="--set-default"))
+            MigrationOperation(
+                op="set_default", field=field, value=_parse_yaml_value(value_raw, option_name="--set-default")
+            )
         )
     for target, source in derives:
         operations.append(MigrationOperation(op="derive", field=target, source=source))
@@ -838,4 +911,3 @@ def main() -> None:
     except BrokenPipeError:
         # E.g. piping to `head` should not throw stack traces.
         sys.exit(0)
-
