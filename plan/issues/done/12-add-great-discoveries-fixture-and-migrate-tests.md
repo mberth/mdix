@@ -13,10 +13,10 @@ labels:
 ---
 
 ## Goal
-Create and adopt a committed fixture vault at `tests/fixtures/vault_great_discoveries/` so Sprint 1 tests run against realistic on-disk notes with deterministic assertions.
+Create and adopt a committed fixture vault at `src/mdix/_examples/vault_great_discoveries/` so Sprint 1 tests run against realistic on-disk notes with deterministic assertions.
 
 ## Scope
-- Add `tests/fixtures/vault_great_discoveries/` using the structure documented in `plan/Development.md`:
+- Add `src/mdix/_examples/vault_great_discoveries/` using the structure documented in `plan/Development.md`:
   - `people/`
   - `discoveries/`
   - `subjects/`
@@ -26,7 +26,7 @@ Create and adopt a committed fixture vault at `tests/fixtures/vault_great_discov
 - Ensure tests do not mutate committed fixture files in-place.
 
 ## Acceptance criteria
-- The committed fixture directory exists at `tests/fixtures/vault_great_discoveries/` with notes in all four subdirectories.
+- The committed fixture directory exists at `src/mdix/_examples/vault_great_discoveries/` with notes in all four subdirectories.
 - Tests that currently handcraft ad-hoc vault trees are migrated to the committed fixture pattern where practical.
 - Test setup follows: copy fixture to temp dir, run `mdix --root <temp-copy> ...`, assert deterministic outputs.
 - `uv run pytest` passes locally using the fixture-driven setup.

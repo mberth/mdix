@@ -148,7 +148,7 @@ In this repo, issue files live under `plan/issues/`. These commands assume you a
   - `media/` (articles, videos, talks about the above)
 
 ### Suggested fixture structure (committed)
-- `tests/fixtures/vault_great_discoveries/`
+- `src/mdix/_examples/vault_great_discoveries/`
   - `people/`
   - `discoveries/`
   - `subjects/`
@@ -173,6 +173,6 @@ tags: ["physics", "chemistry"]
 ```
 
 ### What an end-to-end test should look like (high level)
-- Arrange: copy `tests/fixtures/vault_great_discoveries` to a temp dir
+- Arrange: copy `src/mdix/_examples/vault_great_discoveries` to a temp dir
 - Act: run `uv run mdix --root <temp-vault> <command> ...`
 - Assert: verify deterministic output and key fields/content

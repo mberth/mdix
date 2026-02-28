@@ -6,7 +6,7 @@
 A note without frontmatter returns frontmatter null and no errors.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show subjects/chemistry.md
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' fm show subjects/chemistry.md
 ```
 
 ```output
@@ -16,7 +16,7 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show subjects/che
 Malformed frontmatter is reported in structured errors.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show media/broken-frontmatter.md
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' fm show media/broken-frontmatter.md
 ```
 
 ```output

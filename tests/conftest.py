@@ -7,7 +7,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-FIXTURE_VAULT = REPO_ROOT / "tests" / "fixtures" / "vault_great_discoveries"
+FIXTURE_VAULT = REPO_ROOT / "src" / "mdix" / "_examples" / "vault_great_discoveries"
 SCHEMA_DRIFT_FIXTURE_VAULT = REPO_ROOT / "tests" / "fixtures" / "vault_schema_drift"
 
 

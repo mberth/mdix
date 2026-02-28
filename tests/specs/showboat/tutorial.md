@@ -11,7 +11,7 @@ List all notes in deterministic path order:
 This gives you a quick inventory baseline before you start filtering or validating.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' ls
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' ls
 ```
 
 ```output
@@ -23,7 +23,7 @@ Use this when you know a concept but not where it appears.
 The result includes both frontmatter and body matches, with line numbers for fast follow-up.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' find relativity
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' find relativity
 ```
 
 ```output
@@ -35,7 +35,7 @@ This pattern is useful when different folders represent different workflows (for
 Filtering on `fm.status` is a pragmatic way to focus on records that are actively tracked.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries/people' ls --has fm.status
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries/people' ls --has fm.status
 ```
 
 ```output
@@ -47,7 +47,7 @@ Inspect frontmatter for a single note:
 You get a normalized JSON object with parse errors separated from extracted metadata.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show people/marie-curie.md
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' fm show people/marie-curie.md
 ```
 
 ```output
@@ -59,7 +59,7 @@ The important detail here is that mdix reports the file and error type without c
 That behavior lets you keep auditing large vaults even when a few files are broken.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' fm show media/broken-frontmatter.md
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' fm show media/broken-frontmatter.md
 ```
 
 ```output
@@ -71,7 +71,7 @@ Think of `q` as a bulk version of `fm show` over all notes.
 It is useful for scripting, audits, and quickly spotting inconsistent metadata shape across files.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' q
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' q
 ```
 
 ```output

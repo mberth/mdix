@@ -6,7 +6,7 @@
 q returns a stable JSON list with path, frontmatter, and errors.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' q
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' q
 ```
 
 ```output

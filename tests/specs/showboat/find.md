@@ -6,7 +6,7 @@
 find emits deterministic matches in path and line order.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' find relativity
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' find relativity
 ```
 
 ```output

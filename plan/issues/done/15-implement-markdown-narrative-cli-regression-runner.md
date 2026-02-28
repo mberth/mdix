@@ -28,7 +28,7 @@ Implement a minimal Markdown-driven regression harness for `mdix` CLI workflows 
   - `fm show` output shape, including missing/empty frontmatter behavior
   - `find` deterministic ordering
   - `q` stable output shape (`frontmatter`, `errors`) and ordering
-- Keep examples compatible with `tests/fixtures/vault_great_discoveries/`.
+- Keep examples compatible with `src/mdix/_examples/vault_great_discoveries/`.
 
 ## Acceptance criteria
 - At least one Markdown narrative regression spec exists for each command area: `ls`, `fm show`, `find`, `q`.

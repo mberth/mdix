@@ -14,15 +14,15 @@ labels:
 
 ## Goal
 
-Create a realistic, self-contained demo knowledge base about electricity energy storage solutions under `knowledge_bases/energy_storage/`. The vault should showcase the `mdix` workflow described in `WHY.md` and `README.md`: structured Markdown notes with frontmatter, a schema, and agent-ready instructions.
+Create a realistic, self-contained demo knowledge base about electricity energy storage solutions under `src/mdix/_examples/energy_storage/`. The vault should showcase the `mdix` workflow described in `WHY.md` and `README.md`: structured Markdown notes with frontmatter, a schema, and agent-ready instructions.
 
 ## Scope
 
 **In scope:**
-- Create `knowledge_bases/energy_storage/` with one subdirectory per entity type
+- Create `src/mdix/_examples/energy_storage/` with one subdirectory per entity type
 - Write a handful of realistic notes (3-5 per entity type) covering energy storage topics
 - Add `mdix.schema.yml` in the vault root defining required frontmatter fields and enums
-- Add `knowledge_bases/energy_storage/INSTRUCTIONS.md` for a research agent to use as an entry point
+- Add `src/mdix/_examples/energy_storage/INSTRUCTIONS.md` for a research agent to use as an entry point
 - Entity types chosen by the implementer (see Notes below for suggestions)
 
 **Out of scope:**
@@ -32,10 +32,10 @@ Create a realistic, self-contained demo knowledge base about electricity energy 
 
 ## Acceptance criteria
 
-- `knowledge_bases/energy_storage/` exists and is committed
+- `src/mdix/_examples/energy_storage/` exists and is committed
 - At least 3 entity-type subdirectories, each with at least 3 notes
 - Every note has valid YAML frontmatter consistent with `mdix.schema.yml`
-- `mdix schema validate --root knowledge_bases/energy_storage` exits 0 (no violations)
+- `mdix --root src/mdix/_examples/energy_storage schema validate` exits 0 (no violations)
 - `INSTRUCTIONS.md` exists and covers:
   - vault structure (folders, entity types, note conventions)
   - how to add a new note (filename convention, required frontmatter fields)

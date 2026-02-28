@@ -6,7 +6,7 @@
 The ls command returns a stable, sorted list of markdown files.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries' ls
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries' ls
 ```
 
 ```output
@@ -16,7 +16,7 @@ uv run mdix --root 'tests/fixtures/vault_great_discoveries' ls
 When filtering by frontmatter field presence, results remain deterministic.
 
 ```bash
-uv run mdix --root 'tests/fixtures/vault_great_discoveries/people' ls --has fm.status
+uv run mdix --root 'src/mdix/_examples/vault_great_discoveries/people' ls --has fm.status
 ```
 
 ```output

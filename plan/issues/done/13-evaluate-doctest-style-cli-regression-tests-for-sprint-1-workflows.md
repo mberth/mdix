@@ -39,7 +39,7 @@ Evaluate and choose a doctest-like approach for key CLI workflows that preserves
 - Chosen block format:
   - Input command:
     ```bash
-    mdix --root tests/fixtures/vault_great_discoveries ls
+    mdix --root src/mdix/_examples/vault_great_discoveries ls
     ```
   - Expected stdout:
     ```expected

@@ -70,7 +70,7 @@ date: 2026-02-16
   - Add a quick “**version policy**” paragraph to `plan/Development.md` (why we chose it, and how to upgrade).
 
 - Missing fixture vault + thin test coverage
-  - Implement the `tests/fixtures/vault_great_discoveries/` plan from `plan/Development.md` and require new features to add at least one fixture-driven E2E test.
+  - Implement the `src/mdix/_examples/vault_great_discoveries/` plan from `plan/Development.md` and require new features to add at least one fixture-driven E2E test.
   - Add a couple “high-signal” regression tests:
     - `q` outputs a JSON list and is deterministic
     - `ls --has` semantics with `null` values
@@ -82,7 +82,7 @@ date: 2026-02-16
 
 ## Action items (proposed)
 - Add CI to run `uv run pytest` on push/PR (and pin an explicit supported Python version range).
-- Add `tests/fixtures/vault_great_discoveries/` and migrate/add tests to use it (per `plan/Development.md`).
+- Add `src/mdix/_examples/vault_great_discoveries/` and migrate/add tests to use it (per `plan/Development.md`).
 - Expand coverage for the Sprint 1 issue workflows:
   - `ls` determinism and `--has fm.<field>`
   - `fm show` schema stability (including missing/empty frontmatter)

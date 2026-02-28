@@ -39,7 +39,7 @@ mdix works well with Obsidian-style vaults, but it is not tied to Obsidian.
 
 ## A concrete example
 
-The [energy storage knowledge base](knowledge_bases/energy_storage/) in this repo is a working demo of the setup described above. It covers grid-scale storage technologies, real-world projects, companies, and engineering concepts - 17 notes organized into four subdirectories, each with frontmatter.
+The [energy storage knowledge base](../src/mdix/_examples/energy_storage/) in this repo is a working demo of the setup described above. It covers grid-scale storage technologies, real-world projects, companies, and engineering concepts - 17 notes organized into four subdirectories, each with frontmatter.
 
 The vault has a schema (`mdix.schema.yml`) that enforces required fields and valid enum values across all notes, and an `INSTRUCTIONS.md` that a research agent can use as its entry point: how to add notes, how to cite sources, how to run `mdix` to validate before committing.
 

@@ -42,7 +42,7 @@ Type-specific optional fields (not enforced by schema, but use consistent keys a
 5. Cite your sources (see below).
 6. Validate before committing:
    ```bash
-   mdix schema validate --root knowledge_bases/energy_storage
+   mdix schema validate
    ```
 
 ## Citation requirements
@@ -102,19 +102,19 @@ Workflow for a new technology or project note:
 
 ```bash
 # Validate all notes against the schema
-mdix schema validate --root knowledge_bases/energy_storage
+mdix schema validate
 
 # List all notes with their frontmatter as JSON
-mdix q --root knowledge_bases/energy_storage | jq '.[] | {path, type: .frontmatter.type, status: .frontmatter.status}'
+mdix q | jq '.[] | {path, type: .frontmatter.type, status: .frontmatter.status}'
 
 # Find notes mentioning a term
-mdix find "round-trip efficiency" --root knowledge_bases/energy_storage
+mdix find "round-trip efficiency"
 
 # Inspect frontmatter on a specific note
-mdix fm show knowledge_bases/energy_storage/technologies/lithium-ion-battery.md
+mdix fm show technologies/lithium-ion-battery.md
 
 # Check for drift across the vault
-mdix schema inventory --root knowledge_bases/energy_storage | jq '.summary'
+mdix schema inventory | jq '.summary'
 ```
 
 ## What "done" looks like for a research note
