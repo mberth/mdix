@@ -1,17 +1,14 @@
 # mdix - Agent-friendly Markdown Toolkit
 
-`mdix` is a CLI for Markdown knowledge bases that humans and AI agents edit together.
-It helps you search, validate, and normalize frontmatter in a way that stays predictable over time.
+`mdix` is a command-line toolkit that keeps Markdown knowledge bases consistent, especially when humans and AI agents maintain them together.
 
-If you have ever ended up with mixed filename styles, drifting frontmatter keys, and inconsistent
-frontmatter values, this tool is for you.
+**The setup:** You keep a folder of Markdown files — one per entity — with YAML frontmatter for metadata. You browse and edit in Obsidian (or any editor), and an AI agent researches, creates, and curates notes alongside you. Git tracks history. Structure grows organically as you learn more about the subject.
 
+**The problem:** Over time, this workflow accumulates drift. Filenames follow mixed conventions, frontmatter keys diverge (`type` vs `kind`, renamed fields that linger), value vocabularies become inconsistent (`active`, `identified`, `is_identified`), and partial metadata silently propagates into new notes. This makes agent behavior less reliable, search noisier, and automation harder to trust.
 
-## Who it is for
+**What mdix does:** It gives the agent that works alongside you a command-line interface to search, validate, and normalize frontmattser across your vault, with dry-run previews, schema contracts, and stable machine-readable output. Tell your agent to run `mdix --help` and it can orient itself and start using mdix competently.
 
-- People and agents building knowledge bases on top of Markdown vaults
-- Teams enforcing frontmatter contracts across many files
-- Agent and automation workflows that need stable output and exit codes
+For more background, see [docs/why.md](docs/why.md).
 
 ## Prerequisites
 
@@ -137,26 +134,11 @@ mdix --root ~/notes schema migrate --dry-run
 mdix --root ~/notes schema migrate
 ```
 
-## Agent-friendly output
-
-- Machine-parseable JSON for automation (`jq`, CI, scripts)
-- Human-readable output for interactive terminal usage
-- Stable ordering for reproducible automation
-
-```bash
-mdix q | jq 'length'
-```
-
 ## Going further
 
 - [docs/workflows.md](docs/workflows.md) - Incremental cleanup patterns, scoped migration recipes, CI gates
 - [docs/why.md](docs/why.md) - Background on the problem this solves
 
-
-## Roadmap
-
-- Richer batch-edit workflows with preview
-- Document-outline and structural reading helpers for long notes
 
 ## Status
 

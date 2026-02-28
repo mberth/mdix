@@ -84,15 +84,6 @@ Why this works well:
 - Git history stays meaningful: each commit captures one cleanup intention.
 - You can re-run `schema validate` between passes to measure progress.
 
-## Practical notes
-
-- Scope with `--include`/`--exclude` to avoid surfacing violations outside the current
-  cleanup target.
-- Keep schema enums strict, then normalize legacy values in dedicated follow-up commits.
-- Use a frontmatter library (e.g. `python-frontmatter`) or `mdix` helpers for scripted
-  edits; avoid ad-hoc delimiter splitting.
-- Use `schema inventory` before `schema validate` to understand the field landscape first.
-
 ## CI gate
 
 ```bash
