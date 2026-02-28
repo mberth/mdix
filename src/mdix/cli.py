@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 import sys
 from datetime import date, datetime
@@ -37,10 +38,11 @@ Command guide:
   find <query>       Search raw note text and return path/line matches.
   q                  Index all notes as JSON: path, frontmatter, parse errors.
   fm show <path>     Parse and report frontmatter for one file.
-  fm normalize ...   Apply deterministic metadata normalization transforms.
+  fm normalize       Apply deterministic metadata normalization transforms.
+                     Configure operations with --map-value, --set-default, etc.
   schema inventory   Report observed frontmatter fields and counts.
   schema validate    Validate notes against mdix.schema.yml.
-  schema migrate     Apply migration rules from mdix.schema.yml.
+  schema migrate     Apply ordered schema migration rules from mdix.schema.yml.
 
 \b
 Automation patterns:
@@ -121,11 +123,37 @@ Contract file:
 Schema file format (`mdix.schema.yml`):
   - top-level keys: `version`, `fields`, optional `migrations`
   - `fields.<name>` supports constraints like:
-    - `type`: string | number | boolean | array | object
+    - `type`: string | integer | number | boolean | array | object
     - `required`: true/false
     - `enum`: [allowed, values]
-  - `migrations` is an ordered list of transforms
-    (for example: rename, value_map, set_default, unset_if_null)
+  - `migrations` is an ordered list of transforms applied per note
+
+\b
+Migration operations (`migrations` entries):
+  - rename:
+      op: rename
+      from: legacy.field
+      to: canonical.field
+  - value_map:
+      op: value_map
+      field: status
+      map: {active: identified, stale: archived}
+  - set_default:
+      op: set_default
+      field: type
+      value: person
+  - unset_if_null:
+      op: unset_if_null
+      field: legacy_note
+
+\b
+Migration behavior guarantees:
+  - operations run in listed order for each in-scope markdown file
+  - only files with frontmatter are candidates for migration
+  - parse errors are reported as `parse_error` and never overwritten
+  - `rename` only runs when `from` exists and `to` does not exist
+  - `set_default` runs only when the field is missing or null
+  - `--dry-run` returns deterministic previews without writing files
 
 \b
 Minimal example:
@@ -142,6 +170,15 @@ Minimal example:
     - op: rename
       from: rolle
       to: position
+    - op: value_map
+      field: status
+      map:
+        active: identified
+    - op: set_default
+      field: type
+      value: person
+    - op: unset_if_null
+      field: legacy_note
 
 \b
 Commands:
@@ -243,7 +280,29 @@ def _not_implemented(_: click.Context, __: click.Parameter, value: bool) -> bool
     return value
 
 
+class MdixGroup(click.Group):
+    """Render full command summaries in help instead of truncating with ellipses."""
+
+    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        rows: list[tuple[str, str]] = []
+        for subcommand in self.list_commands(ctx):
+            cmd = self.get_command(ctx, subcommand)
+            if cmd is None or cmd.hidden:
+                continue
+
+            help_text = inspect.cleandoc(cmd.help or cmd.short_help or "").strip()
+            if help_text:
+                # Keep the first logical paragraph, then let Click wrap naturally.
+                help_text = " ".join(help_text.split("\n\n", maxsplit=1)[0].splitlines())
+            rows.append((subcommand, help_text))
+
+        if rows:
+            with formatter.section("Commands"):
+                formatter.write_dl(rows)
+
+
 @click.group(
+    cls=MdixGroup,
     context_settings={"help_option_names": ["-h", "--help"]},
     help=CLI_HELP,
     epilog=CLI_EPILOG,
@@ -373,7 +432,7 @@ def find(ctx: click.Context, query: str) -> None:
     _emit(matches, human=False)
 
 
-@cli.group(help=FM_HELP, epilog=FM_EPILOG)
+@cli.group(cls=MdixGroup, help=FM_HELP, epilog=FM_EPILOG)
 def fm() -> None:
     pass
 
@@ -583,7 +642,7 @@ def new(ctx: click.Context) -> None:  # noqa: ARG001 - ctx for consistent signat
     raise click.ClickException("Not yet implemented")
 
 
-@cli.group(help=SCHEMA_HELP, epilog=SCHEMA_EPILOG)
+@cli.group(cls=MdixGroup, help=SCHEMA_HELP, epilog=SCHEMA_EPILOG)
 def schema() -> None:
     pass
 
