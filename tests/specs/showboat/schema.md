@@ -1,27 +1,30 @@
 # `schema` inventory, validate, migrate
 
+*2026-02-28T16:30:00Z by Showboat 0.6.1*
+<!-- showboat-id: 2cdd2d60-fd1b-4f4e-8826-73a8d1f52b11 -->
+
 The schema commands support deterministic quality gates and migration previews.
 
 ```bash
-uv run mdix --root "$SCHEMA_DRIFT_ROOT" schema inventory
+uv run mdix --root 'tests/fixtures/vault_schema_drift' schema inventory
 ```
 
-```expected
+```output
 {"fields": [{"count": 1, "field": "kontakt"}, {"count": 1, "field": "kontakt.email"}, {"count": 1, "field": "kontakt_email"}, {"count": 1, "field": "legacy_note"}, {"count": 2, "field": "position"}, {"count": 1, "field": "rolle"}, {"count": 4, "field": "status"}, {"count": 4, "field": "title"}, {"count": 3, "field": "type"}], "summary": {"distinct_fields": 9, "files_scanned": 4, "files_with_frontmatter": 4, "parse_errors": 0}}
 ```
 
 ```bash
-uv run mdix --root "$SCHEMA_DRIFT_ROOT" schema validate --no-strict
+uv run mdix --root 'tests/fixtures/vault_schema_drift' schema validate --no-strict
 ```
 
-```expected
+```output
 {"schema": "mdix.schema.yml", "summary": {"files_scanned": 4, "files_valid": 2, "files_validated": 4, "files_with_frontmatter": 4, "files_with_violations": 2, "parse_errors": 0, "violations": 2}, "violations": [{"actual": "active", "code": "SCHEMA_ENUM_MISMATCH", "expected": ["identified", "lead", "zu_kontaktieren"], "field": "status", "message": "Field `status` value is outside allowed enum.", "path": "discoveries/drifted-status.md"}, {"actual": null, "code": "SCHEMA_REQUIRED_MISSING", "expected": {"required": true}, "field": "type", "message": "Missing required field `type`.", "path": "people/missing-type.md"}]}
 ```
 
 ```bash
-uv run mdix --root "$SCHEMA_DRIFT_ROOT" schema migrate --dry-run
+uv run mdix --root 'tests/fixtures/vault_schema_drift' schema migrate --dry-run
 ```
 
-```expected
+```output
 {"changes": [{"changes": [{"field": "status", "from": "active", "op": "value_map", "to": "identified"}, {"field": "legacy_note", "op": "unset_if_null"}], "path": "discoveries/drifted-status.md", "status": "preview"}, {"changes": [{"from": "rolle", "op": "rename", "to": "position", "value": "Research Lead"}, {"from": "kontakt_email", "op": "rename", "to": "kontakt.email", "value": "alice@example.com"}], "path": "people/alice-example.md", "status": "preview"}, {"changes": [{"field": "type", "op": "set_default", "value": "person"}], "path": "people/missing-type.md", "status": "preview"}], "schema": "mdix.schema.yml", "summary": {"dry_run": true, "files_changed": 3, "files_scanned": 4, "operations": 5, "parse_errors": 0, "skipped_no_frontmatter": 0}}
 ```

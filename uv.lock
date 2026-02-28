@@ -44,6 +44,7 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "ruff" },
+    { name = "showboat" },
 ]
 
 [package.metadata]
@@ -56,6 +57,7 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "ruff", specifier = ">=0.15.1" },
+    { name = "showboat", specifier = ">=0.6.1" },
 ]
 
 [[package]]
@@ -191,4 +193,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f6/58/ac864a75067dcbd3b95be5ab4eb2b601d7fbc3d3d736a27e391a4f92a5c1/ruff-0.15.1-py3-none-win32.whl", hash = "sha256:660975d9cb49b5d5278b12b03bb9951d554543a90b74ed5d366b20e2c57c2098", size = 10462555 },
     { url = "https://files.pythonhosted.org/packages/e0/5e/d4ccc8a27ecdb78116feac4935dfc39d1304536f4296168f91ed3ec00cd2/ruff-0.15.1-py3-none-win_amd64.whl", hash = "sha256:c820fef9dd5d4172a6570e5721704a96c6679b80cf7be41659ed439653f62336", size = 11599956 },
     { url = "https://files.pythonhosted.org/packages/2a/07/5bda6a85b220c64c65686bc85bd0bbb23b29c62b3a9f9433fa55f17cda93/ruff-0.15.1-py3-none-win_arm64.whl", hash = "sha256:5ff7d5f0f88567850f45081fac8f4ec212be8d0b963e385c3f7d0d2eb4899416", size = 10874604 },
+]
+
+[[package]]
+name = "showboat"
+version = "0.6.1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/41/8c/5220bc5ddeb4692094024318740e9ae9fac5d78dfd502d046d4294d40104/showboat-0.6.1-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:9f702de4ac839c6b57d7e420e6a347bbeb5aa54f62bfb45e5286f4e71a2e4903", size = 5915600 },
+    { url = "https://files.pythonhosted.org/packages/00/c9/5c22e5d3a12962f7caf7e7b49a9060f700857d8dc339851853bd5bd42aa8/showboat-0.6.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:126c33187d9769453fad5f01a317c82405d1411a15767a19f8c5cc87741c0b46", size = 5548830 },
+    { url = "https://files.pythonhosted.org/packages/b0/c8/7c4d4bacedc12e5381249df3da92868d459439a1f6534e912d57d80599e0/showboat-0.6.1-py3-none-manylinux_2_17_aarch64.whl", hash = "sha256:591f5297b69db5aa7f1bd9f426bc510506706e2792e85e2f2ce548e1b79bedd5", size = 5510858 },
+    { url = "https://files.pythonhosted.org/packages/2d/ec/956248aadd22ecc871cb7179d6afaf0712bbf4cbd2116eacb0d822260605/showboat-0.6.1-py3-none-manylinux_2_17_x86_64.whl", hash = "sha256:fcd5a51ec15487fb844e3e9288f0a0875ab76910976a51fc1f32941377abed2c", size = 5797579 },
+    { url = "https://files.pythonhosted.org/packages/03/83/3f84668ef5815823bdfe0f64efbe88dee3cd66b30c63964aecb1f4d1084e/showboat-0.6.1-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:c9e1ca20c715d488cdb8ac91f30d3afce2dcf5ee29a9b84f926a2d7b318b13f1", size = 5510858 },
+    { url = "https://files.pythonhosted.org/packages/d8/a7/9bca0d1d9391db4174f72e09ffd4502e2c551067c5762264e45668531d6f/showboat-0.6.1-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:65fa7b9dee058567f2b599eead526a8d88a9ba07f9f7f06280679c1411dc5ff5", size = 5797578 },
+    { url = "https://files.pythonhosted.org/packages/5e/a1/d9adbb673a7967533086a9be38932c86eeb0cde9b4b3921974be83577643/showboat-0.6.1-py3-none-win_amd64.whl", hash = "sha256:44b35a3ad6378e29789c122b2294fea63261275f438257b82cd3f85d6a176099", size = 5954580 },
+    { url = "https://files.pythonhosted.org/packages/4f/8b/136481f82b9d16e5bb1377e1053d7e379b2c3910532cf6b66e9b882c8f6c/showboat-0.6.1-py3-none-win_arm64.whl", hash = "sha256:c643e5a4966a3e407c75261bc9e317022263f18680badf451771ccc10eb4db5c", size = 5468178 },
 ]
