@@ -2,7 +2,7 @@
 id: mdix-34
 title: "Wikilink resolution and an unresolved-link frontier command"
 type: task
-status: in_progress
+status: done
 priority: P1
 parent: mdix-19
 depends_on: []

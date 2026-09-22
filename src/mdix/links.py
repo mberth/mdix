@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from .frontmatter_io import read_frontmatter
-from .vault import DEFAULT_IGNORED_DIRS, iter_files, iter_markdown_files
+from .vault import DEFAULT_IGNORED_DIRS, iter_files, iter_markdown_files, path_in_scope
 
 MARKDOWN_SUFFIX = ".md"
 
@@ -375,9 +375,15 @@ def collect_links(
     source: str | None = None,
     index: LinkIndex | None = None,
     use_aliases: bool = True,
+    include: tuple[str, ...] = (),
+    exclude: tuple[str, ...] = (),
 ) -> list[dict[str, Any]]:
     """
     Every wikilink in the vault (or in one note), resolved, in deterministic order.
+
+    `include`/`exclude` scope which notes are *scanned*; every note in the vault
+    stays a possible destination, so excluding the templates folder does not turn
+    links into a template page unresolved.
 
     Order is path order first, then line order, then order within the line.
     """
@@ -392,6 +398,8 @@ def collect_links(
     records: list[dict[str, Any]] = []
     for path in paths:
         rel = _relpath_posix(path, root)
+        if not path_in_scope(rel, include, exclude):
+            continue
         try:
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:

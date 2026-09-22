@@ -211,3 +211,46 @@ def test_unresolved_human_output_lists_the_notes_asking_for_the_page(copied_link
         "1  difference-engine\n"
         "   - index.md\n"
     )
+
+
+def test_ls_include_scopes_the_scan_to_matching_notes(copied_links_vault: Path) -> None:
+    proc = run_mdix(copied_links_vault, "links", "ls", "--include", "people/**")
+    assert proc.returncode == 0, proc.stderr
+    assert sorted({record["path"] for record in json.loads(proc.stdout)}) == [
+        "people/ada-lovelace.md",
+        "people/overview.md",
+    ]
+
+
+def test_ls_exclude_drops_matching_notes_from_the_scan(copied_links_vault: Path) -> None:
+    proc = run_mdix(copied_links_vault, "links", "ls", "--exclude", "people/**")
+    paths = {record["path"] for record in json.loads(proc.stdout)}
+    assert "people/ada-lovelace.md" not in paths
+    assert "index.md" in paths
+
+
+def test_an_excluded_note_is_still_a_link_destination(copied_links_vault: Path) -> None:
+    proc = run_mdix(copied_links_vault, "links", "ls", "--exclude", "people/**")
+    records = json.loads(proc.stdout)
+    alias_link = [record for record in records if record["target"] == "Ada"]
+    assert [record["resolved"] for record in alias_link] == ["people/ada-lovelace.md"]
+
+
+def test_unresolved_respects_the_scan_scope(copied_links_vault: Path) -> None:
+    proc = run_mdix(copied_links_vault, "links", "unresolved", "--exclude", "people/**")
+    assert json.loads(proc.stdout) == [
+        {
+            "count": 1,
+            "occurrences": 2,
+            "sources": ["projects/analytical-engine.md"],
+            "target": "punch card",
+            "variants": ["punch card"],
+        },
+        {
+            "count": 1,
+            "occurrences": 1,
+            "sources": ["index.md"],
+            "target": "difference-engine",
+            "variants": ["difference-engine"],
+        },
+    ]

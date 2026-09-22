@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 DEFAULT_IGNORED_DIRS: frozenset[str] = frozenset(
@@ -49,3 +49,18 @@ def iter_markdown_files(root: Path, *, ignored_dirs: frozenset[str] = DEFAULT_IG
     for path in iter_files(root, ignored_dirs=ignored_dirs):
         if path.name.endswith(".md"):
             yield path
+
+
+def path_in_scope(rel_path: str, include: tuple[str, ...], exclude: tuple[str, ...]) -> bool:
+    """
+    Apply the `--include`/`--exclude` glob filters to one vault-relative path.
+
+    Include first, then exclude: a path has to match one include pattern (when any
+    are given) and no exclude pattern.
+    """
+    path = PurePosixPath(rel_path)
+    if include and not any(path.match(pattern) for pattern in include):
+        return False
+    if exclude and any(path.match(pattern) for pattern in exclude):
+        return False
+    return True
