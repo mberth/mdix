@@ -34,14 +34,14 @@ Utility-scale pack costs fell from [~$1,200/kWh in 2010 to below $150/kWh by 202
 
 ## Limitations
 
-- Thermal runaway risk requires fire suppression and thermal management systems (see [[moss-landing-energy-storage]] fire, January 2025)
+- [[thermal-runaway]] risk requires fire suppression and thermal management systems (see [[moss-landing-energy-storage]] fire, January 2025)
 - Calendar aging degrades capacity even without cycling
 - Cobalt supply chain concerns for NMC/NCA (less relevant for LFP)
 - Economic case weakens beyond 8-hour duration
 
 ## Key players
 
-[[tesla-energy]], [[catl]], BYD, LG Energy Solution, Samsung SDI, Panasonic
+[[tesla-energy]], [[catl]], [[byd]], LG Energy Solution, Samsung SDI, Panasonic
 
 ## Sources
 

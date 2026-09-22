@@ -33,7 +33,7 @@ In Q2 2024, Tesla Energy [deployed a company-record 9.4 GWh of storage in a sing
 
 ## Market position
 
-Tesla Energy is one of the top three BESS suppliers globally by GWh shipped. Competitors at utility scale include [[fluence]], BYD, CATL-backed projects, and Sungrow.
+Tesla Energy is one of the top three BESS suppliers globally by GWh shipped. Competitors at utility scale include [[fluence]], [[byd]], CATL-backed projects, and Sungrow.
 
 ## Sources
 
