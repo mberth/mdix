@@ -39,7 +39,7 @@ LCOS ≈ (Capital cost) / (Lifetime energy throughput)
 
 A system with twice the cycle life at the same capital cost delivers energy at roughly half the cost per MWh cycled - all else equal.
 
-This is why LFP has largely displaced NMC in stationary storage: its longer cycle life and lower risk of thermal runaway outweigh the lower energy density, which doesn't matter for ground-mounted BESS.
+This is why LFP has largely displaced NMC in stationary storage: its longer cycle life and lower risk of [[thermal-runaway]] outweigh the lower energy density, which doesn't matter for ground-mounted BESS.
 
 ## Factors affecting cycle life
 

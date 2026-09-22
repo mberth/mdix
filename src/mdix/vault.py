@@ -19,9 +19,12 @@ DEFAULT_IGNORED_DIRS: frozenset[str] = frozenset(
 )
 
 
-def iter_markdown_files(root: Path, *, ignored_dirs: frozenset[str] = DEFAULT_IGNORED_DIRS) -> Iterable[Path]:
+def iter_files(root: Path, *, ignored_dirs: frozenset[str] = DEFAULT_IGNORED_DIRS) -> Iterable[Path]:
     """
-    Deterministically yield all *.md files under root.
+    Deterministically yield all files under root, whatever their extension.
+
+    Link resolution needs this: a wikilink can point at an attachment
+    (`[[diagram.png]]`), not only at a note.
 
     Ordering is stable across runs on the same filesystem:
     - directory traversal is lexicographically sorted
@@ -32,5 +35,17 @@ def iter_markdown_files(root: Path, *, ignored_dirs: frozenset[str] = DEFAULT_IG
         # Deterministic traversal + allow pruning
         dirnames[:] = sorted(d for d in dirnames if d not in ignored_dirs)
         for name in sorted(filenames):
-            if name.endswith(".md"):
-                yield Path(dirpath) / name
+            yield Path(dirpath) / name
+
+
+def iter_markdown_files(root: Path, *, ignored_dirs: frozenset[str] = DEFAULT_IGNORED_DIRS) -> Iterable[Path]:
+    """
+    Deterministically yield all *.md files under root.
+
+    Ordering is stable across runs on the same filesystem:
+    - directory traversal is lexicographically sorted
+    - filenames are lexicographically sorted
+    """
+    for path in iter_files(root, ignored_dirs=ignored_dirs):
+        if path.name.endswith(".md"):
+            yield path

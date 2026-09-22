@@ -2,7 +2,7 @@
 id: mdix-19
 title: "Epic: Entity resolution and link integrity for people, orgs, and themes"
 type: epic
-status: open
+status: in_progress
 priority: P2
 parent: null
 depends_on:

@@ -16,6 +16,7 @@ import click
 import yaml
 
 from .frontmatter_io import format_frontmatter_yaml, read_frontmatter
+from .links import LinkIndex, collect_links, split_target, unresolved_targets
 from .schema import MigrationOperation, inventory_vault, load_contract, migrate_vault, normalize_vault, validate_vault
 from .vault import iter_markdown_files
 
@@ -47,6 +48,9 @@ Command guide:
   schema inventory   Report observed frontmatter fields and counts.
   schema validate    Validate notes against mdix.schema.yml.
   schema migrate     Apply ordered schema migration rules from mdix.schema.yml.
+  links ls           List wikilinks with their resolved target.
+  links resolve      Resolve one wikilink the way Obsidian would.
+  links unresolved   List link targets that have no note yet.
 
 \b
 Automation patterns:
@@ -58,6 +62,8 @@ Automation patterns:
     mdix schema migrate --dry-run
   - inspect one note's metadata:
     mdix fm show people/albert-einstein.md
+  - see which notes are missing:
+    mdix links unresolved --human
 
 \b
 Exit codes to rely on in agents/CI:
@@ -70,6 +76,7 @@ Help drill-down:
   mdix <command> --help
   mdix fm --help
   mdix schema --help
+  mdix links --help
 """
 
 FM_HELP = """Frontmatter operations for inspection and deterministic normalization."""
@@ -110,6 +117,50 @@ Output behavior:
   - default output is machine-friendly JSON
   - use global `--human` (or command-level `--human` where supported) for text
   - `fm normalize` supports `--human` and `--json` overrides
+"""
+
+LINKS_HELP = """Wikilink graph commands: resolve links, list them, and see what is missing."""
+
+LINKS_EPILOG = """\b
+Quick usage:
+  mdix links <command> [options]
+
+\b
+Commands:
+  resolve TARGET      Resolve one wikilink and report how it was matched.
+  ls                  List every wikilink occurrence with its resolved target.
+  unresolved          List link targets with no note behind them ("the frontier").
+
+\b
+How a link is resolved, first match wins (full rules in docs/links.md):
+  1. `[[#Heading]]`        -> the source note itself
+  2. `[[./x]]`, `[[../x]]` -> path relative to the source note
+  3. `[[folder/x]]`        -> path relative to the vault root
+  4. `[[folder/x]]`        -> path relative to the source note's folder
+  5. `[[folder/x]]`        -> any note whose path ends in `folder/x`
+  6. `[[x]]`               -> any note named `x`, closest to the source note first
+  7. `[[x]]`               -> a note with `x` in its frontmatter aliases
+
+\b
+Scanning rules:
+  - `.md` is appended when the target has no extension
+  - names match case-insensitively, after unicode NFC normalization
+  - fenced code blocks and inline code are not scanned
+  - frontmatter values are scanned (Obsidian links them too)
+
+\b
+Examples:
+  mdix links resolve "[[Marie Curie]]"
+  mdix links resolve "[[../people/marie-curie|her]]" --from discoveries/radioactivity.md
+  mdix links ls --from people/marie-curie.md --human
+  mdix links ls --unresolved-only | jq -r '.[] | "\(.path):\(.line) \(.target)"'
+  mdix links unresolved --human
+
+\b
+Exit codes to rely on in agents/CI:
+  - `links resolve` exits 1 when the target resolves to no file.
+  - `links unresolved` exits 0 even when there are unresolved links; an unresolved
+    link is a request for a note, not an error. Gate on it with `jq length` if needed.
 """
 
 SCHEMA_HELP = """Schema contract commands for field inventory, validation, and migration."""
@@ -447,6 +498,7 @@ _DEMO_NEXT_STEPS: dict[str, list[str]] = {
         "uvx mdix find lithium",
         "uvx mdix schema validate",
         "uvx mdix schema inventory --human",
+        "uvx mdix links unresolved --human",
     ],
 }
 
@@ -903,6 +955,156 @@ def migrate(
                 click.echo(f"- {item['path']} set_default {change['field']} = {change['value']}")
             elif op == "unset_if_null":
                 click.echo(f"- {item['path']} unset_if_null {change['field']}")
+
+
+@cli.group(cls=MdixGroup, help=LINKS_HELP, epilog=LINKS_EPILOG)
+def links() -> None:
+    pass
+
+
+def _require_note(root: Path, path: str) -> Path:
+    full_path = (root / path).resolve()
+    try:
+        full_path.relative_to(root)
+    except ValueError as e:
+        raise click.ClickException("Path must be under the vault root.") from e
+    if not full_path.is_file():
+        raise click.ClickException(f"File not found: {path}")
+    return full_path
+
+
+@links.command(
+    name="resolve",
+    help="Resolve one wikilink target and report the note it points at.",
+)
+@click.argument("target", required=True)
+@click.option(
+    "--from",
+    "from_path",
+    type=str,
+    default=None,
+    metavar="PATH",
+    help="Note the link is written in (decides relative paths and ambiguous names).",
+)
+@click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
+@click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
+@click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
+@click.pass_context
+def links_resolve(
+    ctx: click.Context,
+    target: str,
+    from_path: str | None,
+    no_aliases: bool,
+    human_mode: bool,
+    json_mode: bool,
+) -> None:
+    root: Path = ctx.obj["root"]
+    default_human: bool = ctx.obj["human"]
+    human = _resolve_human_mode(default_human, human_mode, json_mode)
+
+    source: str | None = None
+    if from_path is not None:
+        source = _relpath_posix(_require_note(root, from_path), root)
+
+    raw = target.strip()
+    inner = raw[2:-2] if raw.startswith("[[") and raw.endswith("]]") else raw
+    if inner.startswith("!"):
+        inner = inner[1:]
+    link_target, subpath, display = split_target(inner)
+
+    index = LinkIndex(root)
+    resolution = index.resolve(link_target, source=source, use_aliases=not no_aliases)
+
+    if human:
+        if resolution.resolved is None:
+            click.echo(f"unresolved: {link_target}")
+        else:
+            click.echo(f"{resolution.resolved}\t{resolution.via}")
+    else:
+        _emit(
+            {
+                "target": link_target,
+                "subpath": subpath,
+                "display": display,
+                "from": source,
+                **resolution.as_dict(),
+            },
+            human=False,
+        )
+
+    if resolution.resolved is None:
+        # Stable: 1 means "no note behind this link" (not an error reading files).
+        ctx.exit(1)
+
+
+@links.command(name="ls", help="List wikilink occurrences with the note each one resolves to.")
+@click.option(
+    "--from",
+    "from_path",
+    type=str,
+    default=None,
+    metavar="PATH",
+    help="Only list links written in this note (default: the whole vault).",
+)
+@click.option("--unresolved-only", is_flag=True, default=False, help="Only list links that resolve to no note.")
+@click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
+@click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
+@click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
+@click.pass_context
+def links_ls(
+    ctx: click.Context,
+    from_path: str | None,
+    unresolved_only: bool,
+    no_aliases: bool,
+    human_mode: bool,
+    json_mode: bool,
+) -> None:
+    root: Path = ctx.obj["root"]
+    default_human: bool = ctx.obj["human"]
+    human = _resolve_human_mode(default_human, human_mode, json_mode)
+
+    source: str | None = None
+    if from_path is not None:
+        source = _relpath_posix(_require_note(root, from_path), root)
+
+    records = collect_links(root, source=source, use_aliases=not no_aliases)
+    if unresolved_only:
+        records = [record for record in records if record["resolved"] is None]
+
+    if not human:
+        _emit(records, human=False)
+        return
+
+    for record in records:
+        arrow = record["resolved"] if record["resolved"] is not None else "-"
+        via = record["via"] or "unresolved"
+        shown = record["target"] or record["subpath"] or record["raw"]
+        click.echo(f"{record['path']}:{record['line']}: {shown} -> {arrow} ({via})")
+
+
+@links.command(
+    name="unresolved",
+    help="List link targets that have no note yet, most-linked first (the vault frontier).",
+)
+@click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
+@click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
+@click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
+@click.pass_context
+def links_unresolved(ctx: click.Context, no_aliases: bool, human_mode: bool, json_mode: bool) -> None:
+    root: Path = ctx.obj["root"]
+    default_human: bool = ctx.obj["human"]
+    human = _resolve_human_mode(default_human, human_mode, json_mode)
+
+    rows = unresolved_targets(collect_links(root, use_aliases=not no_aliases))
+
+    if not human:
+        _emit(rows, human=False)
+        return
+
+    for row in rows:
+        click.echo(f"{row['count']}  {row['target']}")
+        for source in row["sources"]:
+            click.echo(f"   - {source}")
 
 
 def main() -> None:

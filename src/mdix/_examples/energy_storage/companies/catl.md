@@ -32,7 +32,7 @@ Cell-level prices from CATL reached approximately [$50-60/kWh at the cell level 
 
 CATL's cell-to-pack (CTP) technology reduces the number of components between cell and pack, improving volumetric energy density by 15-20% and reducing cost. CTP has become an industry benchmark.
 
-Sodium-ion cells are in early commercial production at CATL but not yet at scale for stationary storage.
+[[sodium-ion-battery]] cells are in early commercial production at CATL but not yet at scale for stationary storage.
 
 ## Geopolitical context
 
