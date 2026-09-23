@@ -15,7 +15,14 @@ import click
 import yaml
 
 from .frontmatter_io import format_frontmatter_yaml, read_frontmatter
-from .links import LinkIndex, collect_links, split_target, unresolved_targets
+from .links import (
+    LinkIndex,
+    collect_links,
+    missing_subpaths,
+    normalize_key,
+    split_target,
+    unresolved_targets,
+)
 from .schema import MigrationOperation, inventory_vault, load_contract, migrate_vault, normalize_vault, validate_vault
 from .vault import iter_markdown_files
 
@@ -149,6 +156,8 @@ Scanning rules:
   - frontmatter values are scanned (Obsidian links them too)
   - `ls` and `unresolved` take --include/--exclude for the notes they scan;
     every note in the vault stays a possible destination either way
+  - `#Heading` and `#^block-id` are not checked unless --subpaths is given;
+    then a missing one counts as unresolved (Obsidian itself opens the note)
 
 \b
 Examples:
@@ -157,10 +166,12 @@ Examples:
   mdix links ls --from people/marie-curie.md --human
   mdix links ls --unresolved-only | jq -r '.[] | "\\(.path):\\(.line) \\(.target)"'
   mdix links unresolved --human
+  mdix links unresolved --subpaths --human
 
 \b
 Exit codes to rely on in agents/CI:
-  - `links resolve` exits 1 when the target resolves to no file.
+  - `links resolve` exits 1 when the target resolves to no file, and with
+    --subpaths also when the note has no such heading or block.
   - `links unresolved` exits 0 even when there are unresolved links; an unresolved
     link is a request for a note, not an error. Gate on it with `jq length` if needed.
 """
@@ -980,6 +991,13 @@ def _require_note(root: Path, path: str) -> Path:
     help="Note the link is written in (decides relative paths and ambiguous names).",
 )
 @click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
+@click.option(
+    "--subpaths",
+    "check_subpaths",
+    is_flag=True,
+    default=False,
+    help="Also check that #Heading and #^block-id exist in the destination note.",
+)
 @click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
 @click.pass_context
@@ -988,6 +1006,7 @@ def links_resolve(
     target: str,
     from_path: str | None,
     no_aliases: bool,
+    check_subpaths: bool,
     human_mode: bool,
     json_mode: bool,
 ) -> None:
@@ -1008,25 +1027,30 @@ def links_resolve(
     index = LinkIndex(root)
     resolution = index.resolve(link_target, source=source, use_aliases=not no_aliases)
 
+    subpath_found = index.subpath_found(resolution.resolved, subpath) if check_subpaths else None
+
     if human:
         if resolution.resolved is None:
             click.echo(f"unresolved: {link_target}")
+        elif subpath_found is False:
+            click.echo(f"{resolution.resolved}\t{resolution.via}\tmissing {subpath}")
         else:
             click.echo(f"{resolution.resolved}\t{resolution.via}")
     else:
-        _emit(
-            {
-                "target": link_target,
-                "subpath": subpath,
-                "display": display,
-                "from": source,
-                **resolution.as_dict(),
-            },
-            human=False,
-        )
+        payload = {
+            "target": link_target,
+            "subpath": subpath,
+            "display": display,
+            "from": source,
+            **resolution.as_dict(),
+        }
+        if check_subpaths:
+            payload["subpath_found"] = subpath_found
+        _emit(payload, human=False)
 
-    if resolution.resolved is None:
-        # Stable: 1 means "no note behind this link" (not an error reading files).
+    if resolution.resolved is None or subpath_found is False:
+        # Stable: 1 means "no note behind this link", or with --subpaths "no such
+        # heading or block in the note" (not an error reading files).
         ctx.exit(1)
 
 
@@ -1055,6 +1079,13 @@ def links_resolve(
     help="Glob pattern for notes to skip (repeatable, matched relative to --root).",
 )
 @click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
+@click.option(
+    "--subpaths",
+    "check_subpaths",
+    is_flag=True,
+    default=False,
+    help="Also check that #Heading and #^block-id exist in the destination note.",
+)
 @click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
 @click.pass_context
@@ -1065,6 +1096,7 @@ def links_ls(
     include_patterns: tuple[str, ...],
     exclude_patterns: tuple[str, ...],
     no_aliases: bool,
+    check_subpaths: bool,
     human_mode: bool,
     json_mode: bool,
 ) -> None:
@@ -1082,9 +1114,14 @@ def links_ls(
         use_aliases=not no_aliases,
         include=include_patterns,
         exclude=exclude_patterns,
+        check_subpaths=check_subpaths,
     )
     if unresolved_only:
-        records = [record for record in records if record["resolved"] is None]
+        records = [
+            record
+            for record in records
+            if record["resolved"] is None or record.get("subpath_found") is False
+        ]
 
     if not human:
         _emit(records, human=False)
@@ -1094,7 +1131,8 @@ def links_ls(
         arrow = record["resolved"] if record["resolved"] is not None else "-"
         via = record["via"] or "unresolved"
         shown = record["target"] or record["subpath"] or record["raw"]
-        click.echo(f"{record['path']}:{record['line']}: {shown} -> {arrow} ({via})")
+        missing = f" missing {record['subpath']}" if record.get("subpath_found") is False else ""
+        click.echo(f"{record['path']}:{record['line']}: {shown} -> {arrow} ({via}){missing}")
 
 
 @links.command(
@@ -1116,6 +1154,13 @@ def links_ls(
     help="Glob pattern for notes to skip (repeatable, matched relative to --root).",
 )
 @click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
+@click.option(
+    "--subpaths",
+    "check_subpaths",
+    is_flag=True,
+    default=False,
+    help="Also check that #Heading and #^block-id exist in the destination note.",
+)
 @click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
 @click.pass_context
@@ -1124,6 +1169,7 @@ def links_unresolved(
     include_patterns: tuple[str, ...],
     exclude_patterns: tuple[str, ...],
     no_aliases: bool,
+    check_subpaths: bool,
     human_mode: bool,
     json_mode: bool,
 ) -> None:
@@ -1131,21 +1177,25 @@ def links_unresolved(
     default_human: bool = ctx.obj["human"]
     human = _resolve_human_mode(default_human, human_mode, json_mode)
 
-    rows = unresolved_targets(
-        collect_links(
-            root,
-            use_aliases=not no_aliases,
-            include=include_patterns,
-            exclude=exclude_patterns,
-        )
+    records = collect_links(
+        root,
+        use_aliases=not no_aliases,
+        include=include_patterns,
+        exclude=exclude_patterns,
+        check_subpaths=check_subpaths,
     )
+    rows = unresolved_targets(records)
+    if check_subpaths:
+        rows.extend(missing_subpaths(records))
+        rows.sort(key=lambda row: (-row["count"], -row["occurrences"], normalize_key(row["target"])))
 
     if not human:
         _emit(rows, human=False)
         return
 
     for row in rows:
-        click.echo(f"{row['count']}  {row['target']}")
+        where = f"  (missing in {row['note']})" if "note" in row else ""
+        click.echo(f"{row['count']}  {row['target']}{where}")
         for source in row["sources"]:
             click.echo(f"   - {source}")
 

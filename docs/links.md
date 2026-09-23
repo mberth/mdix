@@ -23,8 +23,8 @@ mdix links unresolved                     # every target with no note behind it
 
 - Everything after the first `|` is **display text**. It never affects resolution.
 - Everything from the first `#` of the path part is the **subpath**: `#Heading`, or `#^block-id`
-  for a block reference. It is reported but not verified - `mdix` resolves to the file, and does
-  not check that the heading or block exists.
+  for a block reference. By default it is reported but not verified: `mdix` resolves to the file,
+  as Obsidian does. Pass `--subpaths` to check it (see [Headings and blocks](#headings-and-blocks)).
 - A leading `!` makes it an **embed**. Embeds resolve exactly like links and are flagged with
   `"embed": true`.
 - A link with only a subpath, `[[#Heading]]`, points at the note it is written in.
@@ -200,6 +200,43 @@ Obsidian shows it in the graph. If you do want a CI gate, build it yourself:
 ```bash
 test "$(mdix links unresolved | jq length)" -le 20
 ```
+
+## Headings and blocks
+
+`[[Complex I#N module]]` resolves to `Complex I.md` whether or not that note has an `N module`
+heading, because Obsidian opens the note either way. A vault that queues sections the way it
+queues notes wants to know the difference. `--subpaths` on `resolve`, `ls` and `unresolved`
+checks it:
+
+```bash
+mdix links resolve "[[Complex I#N module]]" --subpaths      # "subpath_found": false, exit 1
+mdix links ls --from genes/NDUFS4.md --subpaths --human      # "... missing #N module" per link
+mdix links unresolved --subpaths --human                     # owed notes and owed sections
+```
+
+What counts:
+
+- **Headings** are ATX headings, `#` to `######`, outside frontmatter and fenced code. Closing
+  `#`s are dropped. The comparison is the one for note names: case-insensitive, whitespace
+  collapsed, NFC. Setext headings (underlined with `===` or `---`) are not read.
+- **Nested headings**, `#Structure#Q module`, need every heading in the chain to exist. Their
+  order is not checked.
+- **Blocks**, `#^pump`, need a line ending in `^pump`.
+- A link to an attachment, or a link whose note does not exist, has nothing to check:
+  `subpath_found` is `null`.
+
+`ls --subpaths` adds `subpath_found` to every record, and `--unresolved-only` then also keeps the
+links whose subpath is missing. `unresolved --subpaths` adds one row per missing `note#subpath`,
+grouped case-insensitively and ranked together with the missing notes. Such a row has two extra
+fields, `note` (the destination that exists) and `subpath`:
+
+```json
+{"target": "Complex I#N module", "note": "complexes/Complex I.md", "subpath": "#N module",
+ "count": 2, "occurrences": 3, "sources": ["genes/NDUFS4.md", "genes/NDUFV1.md"],
+ "variants": ["Complex I#N module", "complex i#n module"]}
+```
+
+Without `--subpaths` every command prints exactly what it printed before.
 
 ## Working loop
 
