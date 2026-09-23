@@ -6,7 +6,6 @@ import sys
 from datetime import date, datetime
 from importlib.resources import files
 from pathlib import Path
-from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -64,6 +63,7 @@ Automation patterns:
     mdix fm show people/albert-einstein.md
   - see which notes are missing:
     mdix links unresolved --human
+  mdix links unresolved --exclude "_templates/**"
 
 \b
 Exit codes to rely on in agents/CI:
@@ -147,6 +147,8 @@ Scanning rules:
   - names match case-insensitively, after unicode NFC normalization
   - fenced code blocks and inline code are not scanned
   - frontmatter values are scanned (Obsidian links them too)
+  - `ls` and `unresolved` take --include/--exclude for the notes they scan;
+    every note in the vault stays a possible destination either way
 
 \b
 Examples:
@@ -308,15 +310,6 @@ def _summarize_q_errors(items: list[dict[str, Any]]) -> list[str]:
         type_summary = ", ".join(types) if types else "unknown_error"
         lines.append(f"- {path}: {type_summary}")
     return lines
-
-
-def _path_in_scope(rel_path: str, include: tuple[str, ...], exclude: tuple[str, ...]) -> bool:
-    path = PurePosixPath(rel_path)
-    if include and not any(path.match(pattern) for pattern in include):
-        return False
-    if exclude and any(path.match(pattern) for pattern in exclude):
-        return False
-    return True
 
 
 def _parse_yaml_value(value: str, *, option_name: str) -> Any:
@@ -1047,6 +1040,20 @@ def links_resolve(
     help="Only list links written in this note (default: the whole vault).",
 )
 @click.option("--unresolved-only", is_flag=True, default=False, help="Only list links that resolve to no note.")
+@click.option(
+    "--include",
+    "include_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for notes to scan (repeatable, matched relative to --root).",
+)
+@click.option(
+    "--exclude",
+    "exclude_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for notes to skip (repeatable, matched relative to --root).",
+)
 @click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
 @click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
@@ -1055,6 +1062,8 @@ def links_ls(
     ctx: click.Context,
     from_path: str | None,
     unresolved_only: bool,
+    include_patterns: tuple[str, ...],
+    exclude_patterns: tuple[str, ...],
     no_aliases: bool,
     human_mode: bool,
     json_mode: bool,
@@ -1067,7 +1076,13 @@ def links_ls(
     if from_path is not None:
         source = _relpath_posix(_require_note(root, from_path), root)
 
-    records = collect_links(root, source=source, use_aliases=not no_aliases)
+    records = collect_links(
+        root,
+        source=source,
+        use_aliases=not no_aliases,
+        include=include_patterns,
+        exclude=exclude_patterns,
+    )
     if unresolved_only:
         records = [record for record in records if record["resolved"] is None]
 
@@ -1086,16 +1101,44 @@ def links_ls(
     name="unresolved",
     help="List link targets that have no note yet, most-linked first (the vault frontier).",
 )
+@click.option(
+    "--include",
+    "include_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for notes to scan (repeatable, matched relative to --root).",
+)
+@click.option(
+    "--exclude",
+    "exclude_patterns",
+    type=str,
+    multiple=True,
+    help="Glob pattern for notes to skip (repeatable, matched relative to --root).",
+)
 @click.option("--no-aliases", is_flag=True, default=False, help="Do not fall back to frontmatter aliases.")
 @click.option("--human", "human_mode", is_flag=True, default=False, help="Force human-readable output.")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Force JSON output.")
 @click.pass_context
-def links_unresolved(ctx: click.Context, no_aliases: bool, human_mode: bool, json_mode: bool) -> None:
+def links_unresolved(
+    ctx: click.Context,
+    include_patterns: tuple[str, ...],
+    exclude_patterns: tuple[str, ...],
+    no_aliases: bool,
+    human_mode: bool,
+    json_mode: bool,
+) -> None:
     root: Path = ctx.obj["root"]
     default_human: bool = ctx.obj["human"]
     human = _resolve_human_mode(default_human, human_mode, json_mode)
 
-    rows = unresolved_targets(collect_links(root, use_aliases=not no_aliases))
+    rows = unresolved_targets(
+        collect_links(
+            root,
+            use_aliases=not no_aliases,
+            include=include_patterns,
+            exclude=exclude_patterns,
+        )
+    )
 
     if not human:
         _emit(rows, human=False)

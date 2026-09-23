@@ -79,9 +79,9 @@ See `INSTRUCTIONS.md` in that vault for the entry point an agent would use.
 | `mdix schema inventory` | Frontmatter key inventory and drift visibility across the vault |
 | `mdix schema validate` | Check notes against `mdix.schema.yml`. Exits `2` on violations. Supports `--include`/`--exclude` glob filters. |
 | `mdix schema migrate` | Apply key/value/default/null migrations defined in the schema. Supports `--dry-run` and `--include`/`--exclude`. |
-| `mdix links ls` | List wikilink occurrences with the note each one resolves to (`--from`, `--unresolved-only`). |
+| `mdix links ls` | List wikilink occurrences with the note each one resolves to (`--from`, `--unresolved-only`, `--include`/`--exclude`). |
 | `mdix links resolve <target>` | Resolve one wikilink the way Obsidian would, from a given page (`--from`). Exits `1` when nothing matches. |
-| `mdix links unresolved` | List link targets that have no note yet, ranked by how many notes link them. |
+| `mdix links unresolved` | List link targets that have no note yet, ranked by how many notes link them. Supports `--include`/`--exclude`. |
 
 **Read-only commands** (never write files): `q`, `find`, `ls`, `fm show`, `schema inventory`, `schema validate`, `links ls`, `links resolve`, `links unresolved`, and any command with `--dry-run`.
 

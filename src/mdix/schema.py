@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from .vault import iter_markdown_files
+from .vault import iter_markdown_files, path_in_scope
 
 
 @dataclass(frozen=True)
@@ -439,13 +439,7 @@ def _schema_source_path(root: Path, schema_path: Path) -> str:
         return resolved_schema.as_posix()
 
 
-def _path_in_scope(rel_path: str, include: tuple[str, ...], exclude: tuple[str, ...]) -> bool:
-    path = PurePosixPath(rel_path)
-    if include and not any(path.match(pattern) for pattern in include):
-        return False
-    if exclude and any(path.match(pattern) for pattern in exclude):
-        return False
-    return True
+
 
 
 def validate_vault(
@@ -464,7 +458,7 @@ def validate_vault(
 
     for note_path in iter_markdown_files(root):
         rel = note_path.resolve().relative_to(root.resolve()).as_posix()
-        if not _path_in_scope(rel, include, exclude):
+        if not path_in_scope(rel, include, exclude):
             continue
         files_scanned += 1
         note = _read_note(note_path)
@@ -571,7 +565,7 @@ def migrate_vault(
 
     for note_path in iter_markdown_files(root):
         rel = note_path.resolve().relative_to(root.resolve()).as_posix()
-        if not _path_in_scope(rel, include, exclude):
+        if not path_in_scope(rel, include, exclude):
             continue
         files_scanned += 1
         note = _read_note(note_path)
@@ -633,7 +627,7 @@ def normalize_vault(
 
     for note_path in iter_markdown_files(root):
         rel = note_path.resolve().relative_to(root.resolve()).as_posix()
-        if not _path_in_scope(rel, include, exclude):
+        if not path_in_scope(rel, include, exclude):
             continue
         files_scanned += 1
         note = _read_note(note_path)
