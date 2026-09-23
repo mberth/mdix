@@ -19,7 +19,7 @@ A battery architecture that replaces the liquid electrolyte in conventional lith
 The liquid electrolyte in lithium-ion cells is flammable and limits the anode material (metallic lithium reacts violently with liquid electrolytes). A solid electrolyte in principle allows:
 
 - **Lithium metal anode**: ~10× higher theoretical energy density than graphite
-- **No thermal runaway via electrolyte combustion**: major safety improvement
+- **No [[thermal-runaway]] via electrolyte combustion**: major safety improvement
 - **Wider temperature range**: better low-temperature performance
 
 ## Solid electrolyte classes

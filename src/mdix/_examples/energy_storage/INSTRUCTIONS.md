@@ -96,7 +96,8 @@ Workflow for a new technology or project note:
 1. Search Perplexity for an overview to understand key facts and relationships.
 2. Search Brave or fetch URLs to find primary sources (operator site, Wikipedia, IEA/ARENA/DOE reports).
 3. Write the note, citing every figure inline.
-4. Cross-link to related notes using `[[wikilink]]` syntax.
+4. Cross-link to related notes using `[[wikilink]]` syntax. Link entities that have no note yet too -
+   `mdix links unresolved` turns those into the queue for the next note.
 
 ## Using mdix to inspect the vault
 
@@ -115,6 +116,12 @@ mdix fm show technologies/lithium-ion-battery.md
 
 # Check for drift across the vault
 mdix schema inventory | jq '.summary'
+
+# See which notes are missing: link targets with no note behind them
+mdix links unresolved --human
+
+# Check the links of a note you just wrote
+mdix links ls --from technologies/lithium-ion-battery.md --human
 ```
 
 ## What "done" looks like for a research note

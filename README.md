@@ -62,6 +62,7 @@ cd energy-storage
 
 uvx mdix schema validate --human
 uvx mdix schema inventory --human
+uvx mdix links unresolved --human
 ```
 
 See `INSTRUCTIONS.md` in that vault for the entry point an agent would use.
@@ -78,8 +79,11 @@ See `INSTRUCTIONS.md` in that vault for the entry point an agent would use.
 | `mdix schema inventory` | Frontmatter key inventory and drift visibility across the vault |
 | `mdix schema validate` | Check notes against `mdix.schema.yml`. Exits `2` on violations. Supports `--include`/`--exclude` glob filters. |
 | `mdix schema migrate` | Apply key/value/default/null migrations defined in the schema. Supports `--dry-run` and `--include`/`--exclude`. |
+| `mdix links ls` | List wikilink occurrences with the note each one resolves to (`--from`, `--unresolved-only`). |
+| `mdix links resolve <target>` | Resolve one wikilink the way Obsidian would, from a given page (`--from`). Exits `1` when nothing matches. |
+| `mdix links unresolved` | List link targets that have no note yet, ranked by how many notes link them. |
 
-**Read-only commands** (never write files): `q`, `find`, `ls`, `fm show`, `schema inventory`, `schema validate`, and any command with `--dry-run`.
+**Read-only commands** (never write files): `q`, `find`, `ls`, `fm show`, `schema inventory`, `schema validate`, `links ls`, `links resolve`, `links unresolved`, and any command with `--dry-run`.
 
 **Commands that write files**: `fm normalize` (without `--dry-run`), `schema migrate` (without `--dry-run`).
 
@@ -89,6 +93,49 @@ Full help:
 mdix --help
 mdix <command> --help
 ```
+
+## Wikilinks and the frontier
+
+`mdix links` reads `[[wikilinks]]` the way Obsidian does, including relative paths, partial
+paths, ambiguous names, frontmatter links and frontmatter aliases.
+
+Resolve one link, from the page it is written in:
+
+```bash
+mdix links resolve "[[Fluence]]" --from projects/moss-landing.md
+```
+
+```json
+{"target": "Fluence", "subpath": null, "display": null, "from": "projects/moss-landing.md",
+ "resolved": "companies/fluence.md", "via": "basename", "candidates": ["companies/fluence.md"]}
+```
+
+`via` names the rule that matched (`exact_path`, `relative_path`, `path_suffix`, `basename`,
+`alias`, `self`), and `candidates` lists every file the name could have meant, best match first.
+
+The interesting list is the other one: the links that point at notes you have not written yet.
+In a vault that grows outward from what is already there, that is the queue.
+
+```bash
+mdix links unresolved --human
+```
+
+```
+3  thermal-runaway
+   - concepts/cycle-life.md
+   - technologies/lithium-ion-battery.md
+   - technologies/solid-state-battery.md
+2  byd
+   - companies/tesla-energy.md
+   - technologies/lithium-ion-battery.md
+```
+
+Write `[[sodium-ion-battery]]` in the note where it belongs, and the missing note shows up on
+this list instead of being forgotten. An unresolved link is a request, not an error, so
+`links unresolved` exits 0 whatever it finds.
+
+The full lookup order, including how ambiguous names are decided, is in
+[docs/links.md](docs/links.md).
 
 ## Schema contract (`mdix.schema.yml`)
 
@@ -137,6 +184,7 @@ mdix --root ~/notes schema migrate
 ## Going further
 
 - [docs/workflows.md](docs/workflows.md) - Incremental cleanup patterns, scoped migration recipes, CI gates
+- [docs/links.md](docs/links.md) - Wikilink lookup order, ambiguity rules, and the unresolved-link frontier
 - [docs/why.md](docs/why.md) - Background on the problem this solves
 
 
