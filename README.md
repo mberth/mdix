@@ -81,7 +81,7 @@ See `INSTRUCTIONS.md` in that vault for the entry point an agent would use.
 | `mdix schema migrate` | Apply key/value/default/null migrations defined in the schema. Supports `--dry-run` and `--include`/`--exclude`. |
 | `mdix links ls` | List wikilink occurrences with the note each one resolves to (`--from`, `--unresolved-only`, `--include`/`--exclude`). |
 | `mdix links resolve <target>` | Resolve one wikilink the way Obsidian would, from a given page (`--from`). Exits `1` when nothing matches. |
-| `mdix links unresolved` | List link targets that have no note yet, ranked by how many notes link them. Supports `--include`/`--exclude`. |
+| `mdix links unresolved` | List link targets that have no note yet, ranked by how many notes link them. Supports `--include`/`--exclude`; `--subpaths` also lists missing `#Heading` and `#^block-id` targets. |
 
 **Read-only commands** (never write files): `q`, `find`, `ls`, `fm show`, `schema inventory`, `schema validate`, `links ls`, `links resolve`, `links unresolved`, and any command with `--dry-run`.
 
