@@ -66,3 +66,15 @@ def test_mdix_schema_help_includes_agent_focused_guidance() -> None:
     assert "Agent/CI workflow:" in help_text
     assert "Exit codes to rely on:" in help_text
     assert "Examples:" in help_text
+
+
+def test_mdix_source_compiles_without_syntax_warnings() -> None:
+    # A stray backslash in a help string warns on every run and becomes a SyntaxError
+    # in a later Python release.
+    proc = subprocess.run(
+        ["uv", "run", "python", "-W", "error", "-m", "compileall", "-q", "-f", "src/mdix"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr

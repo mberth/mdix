@@ -155,7 +155,7 @@ Examples:
   mdix links resolve "[[Marie Curie]]"
   mdix links resolve "[[../people/marie-curie|her]]" --from discoveries/radioactivity.md
   mdix links ls --from people/marie-curie.md --human
-  mdix links ls --unresolved-only | jq -r '.[] | "\(.path):\(.line) \(.target)"'
+  mdix links ls --unresolved-only | jq -r '.[] | "\\(.path):\\(.line) \\(.target)"'
   mdix links unresolved --human
 
 \b
