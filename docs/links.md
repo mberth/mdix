@@ -145,6 +145,25 @@ visible instead of being silently decided:
 If ambiguity bothers you, the fix is in the vault, not in the tool: rename one of the notes, or
 link it by path.
 
+## Scoping the scan
+
+`links ls` and `links unresolved` take the same `--include`/`--exclude` glob filters as
+`schema validate`, matched against paths relative to `--root`, include first and exclude after.
+
+The filters decide which notes are **scanned**. Every note in the vault stays a possible
+destination, so excluding a folder never turns links *into* it unresolved:
+
+```bash
+# templates hold placeholder links; keep them out of the frontier
+mdix links unresolved --exclude "_templates/**"
+
+# only the links written in one collection
+mdix links ls --include "people/**"
+```
+
+`links resolve` has no filters: it resolves one target against the whole vault, and there is
+nothing to scope.
+
 ## The frontier: links with no note behind them
 
 `mdix links unresolved` is the list of notes you have referred to but not written, ranked by how
