@@ -198,6 +198,72 @@ def scan_links(text: str) -> list[WikiLink]:
     return links
 
 
+_HEADING_RE = re.compile(r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
+_BLOCK_ID_RE = re.compile(r"(?:^|\s)\^([A-Za-z0-9-]+)\s*$")
+
+
+@dataclass(frozen=True)
+class NoteAnchors:
+    """The headings and block ids of one note: what `#Heading` and `#^id` can point at."""
+
+    headings: frozenset[str]
+    block_ids: frozenset[str]
+
+    def has(self, subpath: str) -> bool:
+        """
+        Whether `#Heading`, `#Parent#Child` or `#^block-id` exists in the note.
+
+        Headings compare like note names (case-insensitive, whitespace collapsed).
+        A nested subpath needs every heading in it to exist.
+        """
+        parts = [part for part in subpath.split("#") if part.strip()]
+        if not parts:
+            return True
+        if len(parts) == 1 and parts[0].startswith("^"):
+            return parts[0][1:].strip().casefold() in self.block_ids
+        return all(normalize_key(part) in self.headings for part in parts)
+
+
+def note_anchors(text: str) -> NoteAnchors:
+    """ATX headings and `^block-id` markers of a note, outside frontmatter and code fences."""
+    headings: set[str] = set()
+    block_ids: set[str] = set()
+    for _, line in _iter_body_lines(text):
+        heading = _HEADING_RE.match(line)
+        if heading:
+            headings.add(normalize_key(heading.group(1)))
+            continue
+        block = _BLOCK_ID_RE.search(line)
+        if block:
+            block_ids.add(block.group(1).casefold())
+    return NoteAnchors(headings=frozenset(headings), block_ids=frozenset(block_ids))
+
+
+def _iter_body_lines(text: str) -> Iterator[tuple[int, str]]:
+    """Lines of the note body: frontmatter and fenced code blocks left out."""
+    lines = text.splitlines()
+    in_frontmatter = bool(lines) and lines[0].strip() == "---"
+    fence_char: str | None = None
+    fence_len = 0
+    for number, line in enumerate(lines, start=1):
+        if in_frontmatter:
+            if number > 1 and line.strip() in {"---", "..."}:
+                in_frontmatter = False
+            continue
+        fence_match = _FENCE_RE.match(line.lstrip())
+        if fence_char is None:
+            if fence_match:
+                fence_char = fence_match.group(1)[0]
+                fence_len = len(fence_match.group(1))
+                continue
+            yield number, line
+            continue
+        if fence_match and fence_match.group(1)[0] == fence_char and len(fence_match.group(1)) >= fence_len:
+            if not fence_match.group(2).strip():
+                fence_char = None
+                fence_len = 0
+
+
 def _relpath_posix(path: Path, root: Path) -> str:
     return path.resolve().relative_to(root.resolve()).as_posix()
 
@@ -235,6 +301,7 @@ class LinkIndex:
         self._by_path: dict[str, str] = {}
         self._by_name: dict[str, list[str]] = {}
         self._by_alias: dict[str, list[str]] = {}
+        self._anchors: dict[str, NoteAnchors] = {}
 
         for path in iter_files(self.root, ignored_dirs=ignored_dirs):
             rel = _relpath_posix(path, self.root)
@@ -250,6 +317,25 @@ class LinkIndex:
             rel = _relpath_posix(path, self.root)
             for alias in _read_aliases(path):
                 self._by_alias.setdefault(normalize_key(alias), []).append(rel)
+
+    def subpath_found(self, rel: str | None, subpath: str | None) -> bool | None:
+        """
+        Whether a link's `#Heading` or `#^block-id` exists in the note it resolved to.
+
+        None when there is nothing to check: no subpath, no note, or a destination
+        that is not Markdown (an attachment has no headings).
+        """
+        if not subpath or rel is None or not rel.endswith(MARKDOWN_SUFFIX):
+            return None
+        anchors = self._anchors.get(rel)
+        if anchors is None:
+            try:
+                text = (self.root / rel).read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                return None
+            anchors = note_anchors(text)
+            self._anchors[rel] = anchors
+        return anchors.has(subpath)
 
     @property
     def paths(self) -> list[str]:
@@ -377,9 +463,14 @@ def collect_links(
     use_aliases: bool = True,
     include: tuple[str, ...] = (),
     exclude: tuple[str, ...] = (),
+    check_subpaths: bool = False,
 ) -> list[dict[str, Any]]:
     """
     Every wikilink in the vault (or in one note), resolved, in deterministic order.
+
+    With `check_subpaths`, each record also carries `subpath_found`: whether the
+    `#Heading` or `#^block-id` exists in the destination note (None when the link
+    has no subpath or no Markdown destination).
 
     `include`/`exclude` scope which notes are *scanned*; every note in the vault
     stays a possible destination, so excluding the templates folder does not turn
@@ -409,6 +500,8 @@ def collect_links(
             record = {"path": rel, **link.as_dict()}
             record["resolved"] = resolution.resolved
             record["via"] = resolution.via
+            if check_subpaths:
+                record["subpath_found"] = link_index.subpath_found(resolution.resolved, link.subpath)
             records.append(record)
     return records
 
@@ -440,6 +533,49 @@ def unresolved_targets(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]
         rows.append(
             {
                 "target": target,
+                "count": len(group["sources"]),
+                "occurrences": group["occurrences"],
+                "sources": sorted(group["sources"]),
+                "variants": sorted(spellings),
+            }
+        )
+
+    rows.sort(key=lambda row: (-row["count"], -row["occurrences"], normalize_key(row["target"])))
+    return rows
+
+
+def missing_subpaths(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Sections owed by notes that exist: one row per `note#subpath` that is linked but missing.
+
+    Needs records from `collect_links(..., check_subpaths=True)`. Rows are grouped by
+    destination note and subpath, have the same fields as `unresolved_targets` plus
+    `note` (the destination) and `subpath`, and sort the same way.
+    """
+    groups: dict[tuple[str, str], dict[str, Any]] = {}
+    for record in records:
+        if record.get("subpath_found") is not False:
+            continue
+        note = str(record["resolved"])
+        subpath = str(record["subpath"])
+        spelling = f"{record['target']}{subpath}"
+        group = groups.setdefault(
+            (note, normalize_key(subpath)),
+            {"note": note, "subpath": subpath, "spellings": {}, "sources": set(), "occurrences": 0},
+        )
+        group["spellings"][spelling] = group["spellings"].get(spelling, 0) + 1
+        group["sources"].add(str(record["path"]))
+        group["occurrences"] += 1
+
+    rows: list[dict[str, Any]] = []
+    for group in groups.values():
+        spellings: dict[str, int] = group["spellings"]
+        target = sorted(spellings.items(), key=lambda item: (-item[1], item[0]))[0][0]
+        rows.append(
+            {
+                "target": target,
+                "note": group["note"],
+                "subpath": group["subpath"],
                 "count": len(group["sources"]),
                 "occurrences": group["occurrences"],
                 "sources": sorted(group["sources"]),

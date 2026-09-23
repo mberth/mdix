@@ -1,6 +1,6 @@
 [project]
 name = "mdix"
-version = "0.2.1"
+version = "0.3.0"
 description = "mdix is a command-line toolkit that keeps Markdown knowledge bases consistent, especially when humans and AI agents maintain them together."
 readme = "README.md"
 authors = [

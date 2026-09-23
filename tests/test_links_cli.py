@@ -254,3 +254,96 @@ def test_unresolved_respects_the_scan_scope(copied_links_vault: Path) -> None:
             "variants": ["difference-engine"],
         },
     ]
+
+
+def _subpath_vault(tmp_path: Path) -> Path:
+    root = tmp_path / "vault"
+    (root / "complexes").mkdir(parents=True)
+    (root / "genes").mkdir()
+    (root / "complexes" / "Complex I.md").write_text(
+        "---\n# not a heading: frontmatter comment\ntitle: Complex I\n---\n\n"
+        "# Complex I\n\n## Structure\n\n### Q module ###\n\nA pumped proton. ^pump\n\n"
+        "```text\n## N module\n```\n",
+        encoding="utf-8",
+    )
+    (root / "genes" / "NDUFS4.md").write_text(
+        "At the [[Complex I#N module|N module]] and the [[Complex I#Q module|Q module]].\n"
+        "See [[Complex I#Structure#Q module]], [[Complex I#^pump]] and [[Complex I#^gone]].\n"
+        "Also [[Complex I#N module]] again, and [[Leigh syndrome]].\n",
+        encoding="utf-8",
+    )
+    (root / "genes" / "NDUFV1.md").write_text("In the [[complex i#n module]].\n", encoding="utf-8")
+    return root
+
+
+def test_subpaths_are_not_checked_by_default(tmp_path: Path) -> None:
+    root = _subpath_vault(tmp_path)
+    proc = resolve(root, "[[Complex I#N module]]")
+    assert proc.returncode == 0, proc.stderr
+    assert "subpath_found" not in json.loads(proc.stdout)
+
+    rows = json.loads(run_mdix(root, "links", "unresolved").stdout)
+    assert [row["target"] for row in rows] == ["Leigh syndrome"]
+
+
+def test_resolve_with_subpaths_reports_missing_heading_and_exits_1(tmp_path: Path) -> None:
+    root = _subpath_vault(tmp_path)
+
+    found = resolve(root, "[[Complex I#q module|Q]]", "--subpaths")
+    assert found.returncode == 0, found.stderr
+    assert json.loads(found.stdout)["subpath_found"] is True
+
+    missing = resolve(root, "[[Complex I#N module]]", "--subpaths")
+    assert missing.returncode == 1
+    payload = json.loads(missing.stdout)
+    assert payload["resolved"] == "complexes/Complex I.md"
+    assert payload["subpath_found"] is False
+
+    human = resolve(root, "[[Complex I#N module]]", "--subpaths", "--human")
+    assert human.stdout.strip() == "complexes/Complex I.md\tbasename\tmissing #N module"
+
+    plain = resolve(root, "[[Complex I]]", "--subpaths")
+    assert plain.returncode == 0
+    assert json.loads(plain.stdout)["subpath_found"] is None
+
+
+def test_ls_with_subpaths_marks_each_link(tmp_path: Path) -> None:
+    root = _subpath_vault(tmp_path)
+    proc = run_mdix(root, "links", "ls", "--from", "genes/NDUFS4.md", "--subpaths")
+    assert proc.returncode == 0, proc.stderr
+    found = {record["raw"]: record["subpath_found"] for record in json.loads(proc.stdout)}
+    assert found == {
+        "[[Complex I#N module|N module]]": False,  # only inside a code fence
+        "[[Complex I#Q module|Q module]]": True,  # closing #s are not part of the heading
+        "[[Complex I#Structure#Q module]]": True,
+        "[[Complex I#^pump]]": True,
+        "[[Complex I#^gone]]": False,
+        "[[Complex I#N module]]": False,
+        "[[Leigh syndrome]]": None,
+    }
+
+    only = run_mdix(root, "links", "ls", "--subpaths", "--unresolved-only", "--human")
+    lines = only.stdout.strip().splitlines()
+    assert "genes/NDUFS4.md:1: Complex I -> complexes/Complex I.md (basename) missing #N module" in lines
+    assert "genes/NDUFS4.md:3: Leigh syndrome -> - (unresolved)" in lines
+    assert len(lines) == 5
+
+
+def test_unresolved_with_subpaths_lists_owed_sections(tmp_path: Path) -> None:
+    root = _subpath_vault(tmp_path)
+    proc = run_mdix(root, "links", "unresolved", "--subpaths")
+    assert proc.returncode == 0, proc.stderr
+    rows = json.loads(proc.stdout)
+    assert rows[0] == {
+        "target": "Complex I#N module",
+        "note": "complexes/Complex I.md",
+        "subpath": "#N module",
+        "count": 2,
+        "occurrences": 3,
+        "sources": ["genes/NDUFS4.md", "genes/NDUFV1.md"],
+        "variants": ["Complex I#N module", "complex i#n module"],
+    }
+    assert [row["target"] for row in rows[1:]] == ["Complex I#^gone", "Leigh syndrome"]
+
+    human = run_mdix(root, "links", "unresolved", "--subpaths", "--human")
+    assert "2  Complex I#N module  (missing in complexes/Complex I.md)" in human.stdout.splitlines()
